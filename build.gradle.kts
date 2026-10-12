@@ -50,9 +50,11 @@ tasks.withType<Test> {
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     jvmArgs("-Duser.timezone=UTC")
 }
-
+// Run the test suite before regenerating the README.
+val testTask = tasks.named<Test>("test")
 // Generates the auto-managed section of README.md.
 tasks.register("updateReadme") {
+    dependsOn(testTask)
     group = "documentation"
     description = "Updates project structure, dependencies, API mappings and test reports."
 
