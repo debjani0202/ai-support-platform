@@ -59,6 +59,22 @@ The project focuses on secure authentication, ticket management, database persis
 - `testImplementation("org.springframework.boot:spring-boot-starter-validation-test")`
 - `testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")`
 - `testRuntimeOnly("org.junit.platform:junit-platform-launcher")`
+
+### Discovered API Endpoints
+
+- `DELETE` `/api/tickets/{id}` — `TicketController`
+- `GET` `/api/health` — `HealthController`
+- `GET` `/api/tickets/{id}` — `TicketController`
+- `GET` `/api/tickets` — `TicketController`
+- `PATCH` `/api/tickets/{id}/assign` — `TicketController`
+- `POST` `/api/auth/login` — `AuthController`
+- `POST` `/api/auth/register` — `AuthController`
+- `POST` `/api/tickets` — `TicketController`
+- `PUT` `/api/tickets/{id}` — `TicketController`
+
+### Test Results
+
+**Latest available report counts:** 16 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview
