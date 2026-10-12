@@ -1,0 +1,3 @@
+#!/bin/sh
+./gradlew updateReadme || exit 1
+git add README.md

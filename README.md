@@ -1,0 +1,128 @@
+﻿
+# AI Support Ticket Management Platform
+
+A backend-focused support ticket management platform built with Java 25 and Spring Boot 4.1.1.
+
+The project focuses on secure authentication, ticket management, database persistence, validation, and automated testing.
+
+## Technology Stack
+
+<!-- AUTO:START -->
+
+### Project Structure
+
+- `src/main/java/com/supportai/AiSupportPlatformApplication.java`
+- `src/main/java/com/supportai/auth/controller/AuthController.java`
+- `src/main/java/com/supportai/auth/dto/AuthResponse.java`
+- `src/main/java/com/supportai/auth/dto/LoginRequest.java`
+- `src/main/java/com/supportai/auth/dto/LoginResponse.java`
+- `src/main/java/com/supportai/auth/dto/RegisterRequest.java`
+- `src/main/java/com/supportai/auth/service/AuthService.java`
+- `src/main/java/com/supportai/config/PasswordConfig.java`
+- `src/main/java/com/supportai/exception/ForbiddenException.java`
+- `src/main/java/com/supportai/exception/GlobalExceptionHandler.java`
+- `src/main/java/com/supportai/exception/ResourceNotFoundException.java`
+- `src/main/java/com/supportai/health/HealthController.java`
+- `src/main/java/com/supportai/security/SecurityConfig.java`
+- `src/main/java/com/supportai/security/jwt/JwtConfig.java`
+- `src/main/java/com/supportai/security/jwt/JwtService.java`
+- `src/main/java/com/supportai/ticket/controller/TicketController.java`
+- `src/main/java/com/supportai/ticket/dto/AssignTicketRequest.java`
+- `src/main/java/com/supportai/ticket/dto/CreateTicketRequest.java`
+- `src/main/java/com/supportai/ticket/dto/PageResponse.java`
+- `src/main/java/com/supportai/ticket/dto/TicketResponse.java`
+- `src/main/java/com/supportai/ticket/dto/UpdateTicketRequest.java`
+- `src/main/java/com/supportai/ticket/entity/Ticket.java`
+- `src/main/java/com/supportai/ticket/entity/TicketCategory.java`
+- `src/main/java/com/supportai/ticket/entity/TicketPriority.java`
+- `src/main/java/com/supportai/ticket/repository/TicketRepository.java`
+- `src/main/java/com/supportai/ticket/service/TicketService.java`
+- `src/main/java/com/supportai/user/entity/Role.java`
+- `src/main/java/com/supportai/user/entity/User.java`
+- `src/main/java/com/supportai/user/repository/UserRepository.java`
+
+### Gradle Dependencies
+
+- `implementation("org.springframework.boot:spring-boot-starter-actuator")`
+- `implementation("org.springframework.boot:spring-boot-starter-data-jpa")`
+- `implementation("org.springframework.boot:spring-boot-starter-flyway")`
+- `implementation("org.springframework.boot:spring-boot-starter-security")`
+- `implementation("org.springframework.boot:spring-boot-starter-validation")`
+- `implementation("org.springframework.boot:spring-boot-starter-webmvc")`
+- `implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")`
+- `implementation("org.flywaydb:flyway-database-postgresql")`
+- `runtimeOnly("org.postgresql:postgresql")`
+- `testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")`
+- `testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")`
+- `testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")`
+- `testImplementation("org.springframework.boot:spring-boot-starter-security-test")`
+- `testImplementation("org.springframework.boot:spring-boot-starter-validation-test")`
+- `testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")`
+- `testRuntimeOnly("org.junit.platform:junit-platform-launcher")`
+<!-- AUTO:END -->
+
+## Project Overview
+
+This platform is designed to manage support tickets through a structured backend architecture.
+
+### Core Features
+
+- REST APIs for support ticket management
+- User registration and login
+- JWT-based authentication and authorization
+- Role-based access control
+- PostgreSQL database integration
+- Database versioning with Flyway migrations
+- Input validation
+- Centralized exception handling
+- Automated testing with JUnit and Spring Boot testing support
+- Application health and monitoring through Spring Boot Actuator
+
+## Architecture
+
+The application follows a layered backend structure:
+
+- **Controller layer:** Handles incoming HTTP requests.
+- **Service layer:** Contains application and business logic.
+- **Repository layer:** Handles database operations.
+- **Entity layer:** Represents persistent database models.
+- **DTO layer:** Defines request and response data structures.
+- **Security layer:** Configures authentication and authorization.
+- **Database migration layer:** Manages schema changes using Flyway.
+
+## Prerequisites
+
+- Java 25
+- Docker
+- PostgreSQL
+- Git
+
+## Run Locally
+
+Start your PostgreSQL container and configure your database credentials in the application's configuration.
+
+Then run the application from the project root:
+
+```powershell
+.\gradlew.bat bootRun
+```
+
+Run automated tests:
+
+```powershell
+.\gradlew.bat test
+```
+
+## Update Generated Documentation
+
+Regenerate the project structure and dependency list:
+
+```powershell
+.\gradlew.bat updateReadme
+```
+
+The generated documentation is maintained between the `AUTO:START` and `AUTO:END` markers.
+
+## Project Status
+
+Under active development.
