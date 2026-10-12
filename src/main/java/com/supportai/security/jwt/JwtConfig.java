@@ -1,11 +1,19 @@
+
 package com.supportai.security.jwt;
+
+import com.supportai.user.entity.Role;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
@@ -33,16 +41,64 @@ public class JwtConfig {
 
         return NimbusJwtEncoder
                 .withSecretKey(secretKey)
-                .algorithm(MacAlgorithm.HS256)
+                .algorithm(
+                        org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256)
                 .build();
     }
 
     @Bean
     public JwtDecoder jwtDecoder(SecretKey secretKey) {
 
-        return NimbusJwtDecoder
+        NimbusJwtDecoder decoder = NimbusJwtDecoder
                 .withSecretKey(secretKey)
-                .macAlgorithm(MacAlgorithm.HS256)
+                .macAlgorithm(
+                        org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256)
                 .build();
+
+        // Validate the issuer and standard JWT timestamps.
+        OAuth2TokenValidator<Jwt> issuerValidator =
+                JwtValidators.createDefaultWithIssuer(
+                        "ai-support-platform"
+                );
+
+        // Reject tokens with a missing or unsupported role.
+        OAuth2TokenValidator<Jwt> roleValidator = jwt -> {
+
+            String role = jwt.getClaimAsString("role");
+
+            if (role == null || role.isBlank()) {
+                return OAuth2TokenValidatorResult.failure(
+                        new OAuth2Error(
+                                "invalid_token",
+                                "Missing role claim",
+                                null
+                        )
+                );
+            }
+
+            try {
+                Role.valueOf(role);
+                return OAuth2TokenValidatorResult.success();
+
+            } catch (IllegalArgumentException exception) {
+                return OAuth2TokenValidatorResult.failure(
+                        new OAuth2Error(
+                                "invalid_token",
+                                "Unsupported role claim",
+                                null
+                        )
+                );
+            }
+        };
+
+        // Both validators must succeed for a token to be accepted.
+        decoder.setJwtValidator(
+                new DelegatingOAuth2TokenValidator<>(
+                        issuerValidator,
+                        roleValidator
+                )
+        );
+
+        return decoder;
     }
 }
