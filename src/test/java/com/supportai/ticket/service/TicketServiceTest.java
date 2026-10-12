@@ -1,6 +1,10 @@
 
 package com.supportai.ticket.service;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.ticket.dto.TicketResponse;
@@ -349,6 +353,122 @@ void adminCanDeleteTicket() {
             Role.ADMIN
     );
 }
+
+
+    // An administrator should be able to assign a ticket to a valid agent.
+    @Test
+    void adminCanAssignTicketToAgent() {
+        // Arrange: create a customer who originally submitted the ticket.
+        User customer = new User(
+                "Customer",
+                "customer@example.com",
+                "password",
+                Role.CUSTOMER
+        );
+        ReflectionTestUtils.setField(customer, "id", 1L);
+
+        // Arrange: create the agent who will receive the ticket.
+        User agent = new User(
+                "Agent",
+                "agent@example.com",
+                "password",
+                Role.AGENT
+        );
+        ReflectionTestUtils.setField(agent, "id", 3L);
+
+        // Arrange: create a ticket that belongs to the customer.
+        Ticket ticket = new Ticket(
+                "Login issue",
+                "Cannot log in",
+                "OPEN"
+        );
+        ticket.setCreatedBy(customer);
+
+        // Mock the database lookups so no real database is needed.
+        when(ticketRepository.findById(100L))
+                .thenReturn(Optional.of(ticket));
+        when(userRepository.findById(3L))
+                .thenReturn(Optional.of(agent));
+        when(ticketRepository.save(ticket))
+                .thenReturn(ticket);
+
+        // Act: an administrator assigns the ticket to agent ID 3.
+        TicketResponse response = ticketService.assignTicket(
+                100L,
+                3L,
+                99L,
+                Role.ADMIN
+        );
+
+        // Assert: the ticket now points to the expected agent.
+        assertSame(agent, ticket.getAssignedTo());
+        assertNotNull(response);
+
+        // Verify that the updated ticket was saved.
+        verify(ticketRepository).save(ticket);
+    }
+
+    // Customers must not be allowed to assign tickets.
+    @Test
+    void customerCannotAssignTicket() {
+        // Act and assert: assignment must fail before database access.
+        assertThrows(
+                ForbiddenException.class,
+                () -> ticketService.assignTicket(
+                        100L,
+                        3L,
+                        1L,
+                        Role.CUSTOMER
+                )
+        );
+
+        // The service checks the role before looking up the ticket.
+        verify(ticketRepository, never()).findById(100L);
+        verify(userRepository, never()).findById(3L);
+        verify(ticketRepository, never()).save(
+                org.mockito.ArgumentMatchers.any(Ticket.class)
+        );
+    }
+
+    // An administrator must not assign a ticket to a customer.
+    @Test
+    void adminCannotAssignTicketToCustomer() {
+        User customer = new User(
+                "Customer",
+                "customer@example.com",
+                "password",
+                Role.CUSTOMER
+        );
+        ReflectionTestUtils.setField(customer, "id", 2L);
+
+        Ticket ticket = new Ticket(
+                "Login issue",
+                "Cannot log in",
+                "OPEN"
+        );
+
+        when(ticketRepository.findById(100L))
+                .thenReturn(Optional.of(ticket));
+        when(userRepository.findById(2L))
+                .thenReturn(Optional.of(customer));
+
+        // A customer exists, but their role makes them an invalid assignee.
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ticketService.assignTicket(
+                        100L,
+                        2L,
+                        99L,
+                        Role.ADMIN
+                )
+        );
+
+        // An invalid assignment must never be saved.
+        verify(ticketRepository, never()).save(
+                org.mockito.ArgumentMatchers.any(Ticket.class)
+        );
+    }
+
 
 
 }
