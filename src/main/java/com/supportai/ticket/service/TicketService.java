@@ -1,10 +1,11 @@
-//The ticket service contains business rules that determine what an authenticated user can actually do with a ticket.
+
 package com.supportai.ticket.service;
 
+import com.supportai.audit.service.TicketAuditLogService;
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
-import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.CreateTicketRequest;
+import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
 import com.supportai.ticket.dto.UpdateTicketRequest;
 import com.supportai.ticket.entity.Ticket;
@@ -20,26 +21,42 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+import java.util.Set;
+
+/**
+ * Contains the business rules that determine what an authenticated user
+ * can do with a ticket.
+ *
+ * Ticket changes and their audit events participate in the same transaction.
+ */
 @Service
-@Transactional  //transaction groups database operations into a unit of work. If an operation fails, the transaction can be rolled back according to the transaction rules.
+@Transactional
 public class TicketService {
 
-        //private means the fields can be accessed directly only inside this class.
-        //final means each field must be assigned once and cannot later be reassigned.
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
+    private final TicketAuditLogService auditLogService;
 
+    /**
+     * Constructor injection lets Spring provide all required dependencies.
+     */
     public TicketService(
             TicketRepository ticketRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            TicketAuditLogService auditLogService
     ) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
     }
 
+    /**
+     * Creates a ticket and records a CREATED audit event.
+     */
     public TicketResponse createTicket(
-            CreateTicketRequest request,  //CreateTicketRequest request contains the information submitted for the new ticket, such as its title, description, category and priority.
-            Long currentUserId  //Long currentUserId identifies the user creating the ticket. This ID should come from the authenticated request context, not from a customer-controlled field in the request body.
+            CreateTicketRequest request,
+            Long currentUserId
     ) {
         User currentUser = findUserById(currentUserId);
 
@@ -52,19 +69,34 @@ public class TicketService {
 
         Ticket savedTicket = ticketRepository.save(ticket);
 
+        // Record who created the ticket and what was created.
+        auditLogService.recordAction(
+                savedTicket,
+                currentUser,
+                "CREATED",
+                null,
+                "Ticket created: " + savedTicket.getTitle()
+        );
+
         return mapToResponse(savedTicket);
     }
 
-    @Transactional(readOnly = true)//->Marks this database operation as read-only.
+    /**
+     * Retrieves a paginated and filtered ticket list.
+     *
+     * Customers see their own tickets, agents see their assigned tickets,
+     * and administrators can see all tickets.
+     */
+    @Transactional(readOnly = true)
     public PageResponse<TicketResponse> getTickets(
-            int page,  //Control pagination.
+            int page,
             int size,
-            String sortBy, //The field used to order tickets, such as createdAt.
-            String direction, //asc for ascending or desc for descending.
-            String status, //Optional status filter, such as RESOLVED
-            String search, //Optional text search against ticket titles.
-            Long currentUserId, //Identifies the logged-in user.
-            Role currentUserRole //Determines which tickets that user may list.
+            String sortBy,
+            String direction,
+            String status,
+            String search,
+            Long currentUserId,
+            Role currentUserRole
     ) {
         if (page < 0) {
             throw new IllegalArgumentException(
@@ -85,10 +117,15 @@ public class TicketService {
             );
         }
 
-        if (!java.util.Set.of(
-                "id", "title", "status",
-                "priority", "category",
-                "createdAt", "updatedAt"
+        // Allow only known entity fields for sorting.
+        if (sortBy == null || !Set.of(
+                "id",
+                "title",
+                "status",
+                "priority",
+                "category",
+                "createdAt",
+                "updatedAt"
         ).contains(sortBy)) {
             throw new IllegalArgumentException(
                     "Invalid sort field"
@@ -104,11 +141,8 @@ public class TicketService {
                 Sort.by(sortDirection, sortBy)
         );
 
-        boolean hasStatus =
-                status != null && !status.isBlank();
-
-        boolean hasSearch =
-                search != null && !search.isBlank();
+        boolean hasStatus = status != null && !status.isBlank();
+        boolean hasSearch = search != null && !search.isBlank();
 
         String searchText = hasSearch ? search.trim() : "";
 
@@ -217,6 +251,9 @@ public class TicketService {
         );
     }
 
+    /**
+     * Retrieves a ticket after checking the user's access permissions.
+     */
     @Transactional(readOnly = true)
     public TicketResponse getTicketById(
             Long ticketId,
@@ -234,6 +271,9 @@ public class TicketService {
         return mapToResponse(ticket);
     }
 
+    /**
+     * Updates ticket information and records actual status changes.
+     */
     public TicketResponse updateTicket(
             Long ticketId,
             UpdateTicketRequest request,
@@ -248,9 +288,12 @@ public class TicketService {
                 currentUserRole
         );
 
-        // Customers cannot change ticket status.
+        // Save the original status before changing the ticket.
+        String oldStatus = ticket.getStatus();
+
+        // Customers may edit ticket details but cannot change status.
         if (currentUserRole == Role.CUSTOMER
-                && !ticket.getStatus().equals(request.status())) {
+                && !Objects.equals(ticket.getStatus(), request.status())) {
             throw new ForbiddenException(
                     "Customers cannot change ticket status"
             );
@@ -261,7 +304,7 @@ public class TicketService {
         ticket.setCategory(request.category());
         ticket.setPriority(request.priority());
 
-        // Only agents and admins can change ticket status.
+        // Only agents and administrators can change ticket status.
         if (currentUserRole == Role.AGENT
                 || currentUserRole == Role.ADMIN) {
             ticket.setStatus(request.status());
@@ -269,16 +312,32 @@ public class TicketService {
 
         Ticket updatedTicket = ticketRepository.save(ticket);
 
+        // Create an audit event only if the status actually changed.
+        if (!Objects.equals(oldStatus, updatedTicket.getStatus())) {
+            User actor = findUserById(currentUserId);
+
+            auditLogService.recordAction(
+                    updatedTicket,
+                    actor,
+                    "STATUS_CHANGED",
+                    oldStatus,
+                    updatedTicket.getStatus()
+            );
+        }
+
         return mapToResponse(updatedTicket);
     }
 
+    /**
+     * Assigns a ticket to an agent.
+     * Only administrators can perform this operation.
+     */
     public TicketResponse assignTicket(
             Long ticketId,
             Long agentId,
             Long currentUserId,
             Role currentUserRole
     ) {
-        // Only administrators can assign tickets.
         if (currentUserRole != Role.ADMIN) {
             throw new ForbiddenException(
                     "Only administrators can assign tickets"
@@ -294,13 +353,34 @@ public class TicketService {
             );
         }
 
+        // Remember the previous assignee before updating the ticket.
+        Long oldAgentId = ticket.getAssignedTo() != null
+                ? ticket.getAssignedTo().getId()
+                : null;
+
         ticket.setAssignedTo(agent);
 
         Ticket updatedTicket = ticketRepository.save(ticket);
 
+        // Avoid creating duplicate events when the assignee is unchanged.
+        if (!Objects.equals(oldAgentId, agent.getId())) {
+            User actor = findUserById(currentUserId);
+
+            auditLogService.recordAction(
+                    updatedTicket,
+                    actor,
+                    "ASSIGNED",
+                    oldAgentId != null ? oldAgentId.toString() : null,
+                    agent.getId().toString()
+            );
+        }
+
         return mapToResponse(updatedTicket);
     }
 
+    /**
+     * Deletes a ticket only when the existing access rules permit it.
+     */
     public void deleteTicket(
             Long ticketId,
             Long currentUserId,
@@ -324,6 +404,9 @@ public class TicketService {
         ticketRepository.delete(ticket);
     }
 
+    /**
+     * Finds a ticket or throws a not-found exception.
+     */
     private Ticket findTicketById(Long ticketId) {
         return ticketRepository.findById(ticketId)
                 .orElseThrow(() ->
@@ -333,6 +416,9 @@ public class TicketService {
                 );
     }
 
+    /**
+     * Finds a user or throws a not-found exception.
+     */
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() ->
@@ -342,6 +428,9 @@ public class TicketService {
                 );
     }
 
+    /**
+     * Enforces the existing role-based ticket access rules.
+     */
     private void validateTicketAccess(
             Ticket ticket,
             Long currentUserId,
@@ -380,6 +469,9 @@ public class TicketService {
         );
     }
 
+    /**
+     * Converts the Ticket entity into the API response DTO.
+     */
     private TicketResponse mapToResponse(Ticket ticket) {
         return new TicketResponse(
                 ticket.getId(),

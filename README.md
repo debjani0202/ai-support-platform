@@ -12,6 +12,11 @@ The project focuses on secure authentication, ticket management, database persis
 ### Project Structure
 
 - `src/main/java/com/supportai/AiSupportPlatformApplication.java`
+- `src/main/java/com/supportai/audit/controller/TicketAuditLogController.java`
+- `src/main/java/com/supportai/audit/dto/TicketAuditLogResponse.java`
+- `src/main/java/com/supportai/audit/entity/TicketAuditLog.java`
+- `src/main/java/com/supportai/audit/repository/TicketAuditLogRepository.java`
+- `src/main/java/com/supportai/audit/service/TicketAuditLogService.java`
 - `src/main/java/com/supportai/auth/controller/AuthController.java`
 - `src/main/java/com/supportai/auth/dto/AuthResponse.java`
 - `src/main/java/com/supportai/auth/dto/LoginRequest.java`
@@ -26,6 +31,12 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/security/SecurityConfig.java`
 - `src/main/java/com/supportai/security/jwt/JwtConfig.java`
 - `src/main/java/com/supportai/security/jwt/JwtService.java`
+- `src/main/java/com/supportai/ticket/comment/controller/TicketCommentController.java`
+- `src/main/java/com/supportai/ticket/comment/dto/CommentResponse.java`
+- `src/main/java/com/supportai/ticket/comment/dto/CreateCommentRequest.java`
+- `src/main/java/com/supportai/ticket/comment/entity/TicketComment.java`
+- `src/main/java/com/supportai/ticket/comment/repository/TicketCommentRepository.java`
+- `src/main/java/com/supportai/ticket/comment/service/TicketCommentService.java`
 - `src/main/java/com/supportai/ticket/controller/TicketController.java`
 - `src/main/java/com/supportai/ticket/dto/AssignTicketRequest.java`
 - `src/main/java/com/supportai/ticket/dto/CreateTicketRequest.java`
@@ -66,15 +77,18 @@ The project focuses on secure authentication, ticket management, database persis
 - `GET` `/api/health` — `HealthController`
 - `GET` `/api/tickets/{id}` — `TicketController`
 - `GET` `/api/tickets` — `TicketController`
+- `GET` `` — `TicketAuditLogController`
+- `GET` `` — `TicketCommentController`
 - `PATCH` `/api/tickets/{id}/assign` — `TicketController`
 - `POST` `/api/auth/login` — `AuthController`
 - `POST` `/api/auth/register` — `AuthController`
 - `POST` `/api/tickets` — `TicketController`
+- `POST` `` — `TicketCommentController`
 - `PUT` `/api/tickets/{id}` — `TicketController`
 
 ### Test Results
 
-**Latest available report counts:** 19 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Latest available report counts:** 11 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview
