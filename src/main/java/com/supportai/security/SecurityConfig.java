@@ -13,18 +13,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
-/*
- * 1. Basically, this file is the security guard before entering the backend.
- *
- * 2. When a request arrives, Spring Security checks whether the request
- * is permitted, whether authentication is required, and whether a
- * supplied JWT is valid.
- *
- * My configuration has two main responsibilities:
- * - Define which requests are public and which require authentication.
- * - Convert the role in a JWT into a Spring Security authority.
- */
-
 @Configuration
 public class SecurityConfig {
 
@@ -33,38 +21,24 @@ public class SecurityConfig {
             throws Exception {
 
         http
-                /*
-                 * This API uses bearer tokens rather than session cookies.
-                 * CSRF protection is disabled for this stateless API.
-                 */
                 .csrf(csrf -> csrf.disable())
 
-                // Do not store authentication in an HTTP session.
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS))
 
-                /*
-                 * Define which requests are public and which require
-                 * authentication.
-                 */
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/register",
+                                "/api/auth/login",
                                 "/api/health",
                                 "/actuator/health")
                         .permitAll()
 
-                        .requestMatchers("/api/tickets/**")
-                        .authenticated()
+                        // All other requests require authentication.
+                        .anyRequest().authenticated())
 
-                        .anyRequest()
-                        .authenticated())
-
-                /*
-                 * Spring Security validates the JWT and uses our converter
-                 * to map its role claim to a granted authority.
-                 */
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(
@@ -81,22 +55,13 @@ public class SecurityConfig {
 
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
 
-            // Read the role stored in the JWT.
             String role = jwt.getClaimAsString("role");
 
-            /*
-             * If the role is missing or blank, the converter returns
-             * an empty list of authorities.
-             */
             if (role == null || role.isBlank()) {
                 return List.of();
             }
 
             try {
-                /*
-                 * Validate the role against the Role enum.
-                 * Valid values are CUSTOMER, AGENT, and ADMIN.
-                 */
                 Role validatedRole = Role.valueOf(role);
 
                 return List.of(
@@ -104,10 +69,6 @@ public class SecurityConfig {
                                 "ROLE_" + validatedRole.name()));
 
             } catch (IllegalArgumentException exception) {
-
-                /*
-                 * An unknown role must not grant any authority.
-                 */
                 return List.of();
             }
         });

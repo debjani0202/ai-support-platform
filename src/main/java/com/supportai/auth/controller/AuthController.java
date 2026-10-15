@@ -1,6 +1,8 @@
+
 package com.supportai.auth.controller;
 
 import com.supportai.auth.dto.AuthResponse;
+import com.supportai.auth.dto.ChangePasswordRequest;
 import com.supportai.auth.dto.LoginRequest;
 import com.supportai.auth.dto.LoginResponse;
 import com.supportai.auth.dto.RegisterRequest;
@@ -9,6 +11,7 @@ import com.supportai.auth.service.AuthService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,5 +41,17 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request
     ) {
         return authService.login(request);
+    }
+
+    @PostMapping("/change-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        // Get the user ID from the authenticated JWT principal.
+        Long userId = Long.valueOf(authentication.getName());
+
+        authService.changePassword(userId, request);
     }
 }

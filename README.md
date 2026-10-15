@@ -19,6 +19,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/audit/service/TicketAuditLogService.java`
 - `src/main/java/com/supportai/auth/controller/AuthController.java`
 - `src/main/java/com/supportai/auth/dto/AuthResponse.java`
+- `src/main/java/com/supportai/auth/dto/ChangePasswordRequest.java`
 - `src/main/java/com/supportai/auth/dto/LoginRequest.java`
 - `src/main/java/com/supportai/auth/dto/LoginResponse.java`
 - `src/main/java/com/supportai/auth/dto/RegisterRequest.java`
@@ -80,6 +81,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `GET` `` — `TicketAuditLogController`
 - `GET` `` — `TicketCommentController`
 - `PATCH` `/api/tickets/{id}/assign` — `TicketController`
+- `POST` `/api/auth/change-password` — `AuthController`
 - `POST` `/api/auth/login` — `AuthController`
 - `POST` `/api/auth/register` — `AuthController`
 - `POST` `/api/tickets` — `TicketController`
