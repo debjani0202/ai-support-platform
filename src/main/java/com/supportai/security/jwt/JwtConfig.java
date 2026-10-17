@@ -91,11 +91,28 @@ public class JwtConfig {
             }
         };
 
-        // Both validators must succeed for a token to be accepted.
+        // Reject tokens with a missing or invalid user ID subject.
+        OAuth2TokenValidator<Jwt> subjectValidator = jwt -> {
+            String subject = jwt.getSubject();
+
+            if (subject == null || !subject.matches("[1-9]\\d*")) {
+                return OAuth2TokenValidatorResult.failure(
+                        new OAuth2Error(
+                                "invalid_token",
+                                "Missing or invalid user ID subject",
+                                null
+                        )
+                );
+            }
+
+            return OAuth2TokenValidatorResult.success();
+        };
+        // All validators must succeed for a token to be accepted.
         decoder.setJwtValidator(
                 new DelegatingOAuth2TokenValidator<>(
                         issuerValidator,
-                        roleValidator
+                        roleValidator,
+                        subjectValidator
                 )
         );
 

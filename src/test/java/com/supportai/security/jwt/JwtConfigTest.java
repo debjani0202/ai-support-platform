@@ -1,7 +1,6 @@
 package com.supportai.security.jwt;
 
 import java.time.Instant;
-import java.util.Base64;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -48,10 +47,7 @@ class JwtConfigTest {
         Instant now = Instant.now();
 
         String token = createToken(
-                ISSUER,
-                "CUSTOMER",
-                now,
-                now.plusSeconds(300)
+                ISSUER, "CUSTOMER", "1", now, now.plusSeconds(300)
         );
 
         assertDoesNotThrow(() -> decoder.decode(token));
@@ -62,16 +58,11 @@ class JwtConfigTest {
         Instant now = Instant.now();
 
         String token = createToken(
-                ISSUER,
-                "CUSTOMER",
-                now.minusSeconds(120),
-                now.minusSeconds(60)
+                ISSUER, "CUSTOMER", "1",
+                now.minusSeconds(120), now.minusSeconds(60)
         );
 
-        assertThrows(
-                JwtException.class,
-                () -> decoder.decode(token)
-        );
+        assertThrows(JwtException.class, () -> decoder.decode(token));
     }
 
     @Test
@@ -79,16 +70,11 @@ class JwtConfigTest {
         Instant now = Instant.now();
 
         String token = createToken(
-                "unexpected-issuer",
-                "CUSTOMER",
-                now,
-                now.plusSeconds(300)
+                "unexpected-issuer", "CUSTOMER", "1",
+                now, now.plusSeconds(300)
         );
 
-        assertThrows(
-                JwtException.class,
-                () -> decoder.decode(token)
-        );
+        assertThrows(JwtException.class, () -> decoder.decode(token));
     }
 
     @Test
@@ -96,16 +82,10 @@ class JwtConfigTest {
         Instant now = Instant.now();
 
         String token = createToken(
-                ISSUER,
-                null,
-                now,
-                now.plusSeconds(300)
+                ISSUER, null, "1", now, now.plusSeconds(300)
         );
 
-        assertThrows(
-                JwtException.class,
-                () -> decoder.decode(token)
-        );
+        assertThrows(JwtException.class, () -> decoder.decode(token));
     }
 
     @Test
@@ -113,30 +93,61 @@ class JwtConfigTest {
         Instant now = Instant.now();
 
         String token = createToken(
-                ISSUER,
-                "SUPERUSER",
-                now,
-                now.plusSeconds(300)
+                ISSUER, "SUPERUSER", "1", now, now.plusSeconds(300)
         );
 
-        assertThrows(
-                JwtException.class,
-                () -> decoder.decode(token)
+        assertThrows(JwtException.class, () -> decoder.decode(token));
+    }
+
+    @Test
+    void rejectsTokenWithMissingSubject() {
+        Instant now = Instant.now();
+
+        String token = createToken(
+                ISSUER, "CUSTOMER", null, now, now.plusSeconds(300)
         );
+
+        assertThrows(JwtException.class, () -> decoder.decode(token));
+    }
+
+    @Test
+    void rejectsTokenWithNonNumericSubject() {
+        Instant now = Instant.now();
+
+        String token = createToken(
+                ISSUER, "CUSTOMER", "abc", now, now.plusSeconds(300)
+        );
+
+        assertThrows(JwtException.class, () -> decoder.decode(token));
+    }
+
+    @Test
+    void rejectsTokenWithZeroSubject() {
+        Instant now = Instant.now();
+
+        String token = createToken(
+                ISSUER, "CUSTOMER", "0", now, now.plusSeconds(300)
+        );
+
+        assertThrows(JwtException.class, () -> decoder.decode(token));
     }
 
     private String createToken(
             String issuer,
             String role,
+            String subject,
             Instant issuedAt,
             Instant expiration
     ) {
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .issuer(issuer)
-                .subject("1")
                 .issuedAt(issuedAt)
                 .expiresAt(expiration)
                 .claim("email", "jwt-test@example.com");
+
+        if (subject != null) {
+            claims.subject(subject);
+        }
 
         if (role != null) {
             claims.claim("role", role);
