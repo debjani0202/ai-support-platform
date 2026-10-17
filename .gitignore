@@ -16,3 +16,12 @@ build/
 # Application secrets
 application-local.yml
 application-local.properties
+# Java compiled output
+bin/
+out/
+
+# Temporary and editor backup files
+*.bak
+*.bom-backup
+*.backup-before-*
+*.before-*
