@@ -3,6 +3,7 @@ plugins {
     java
     id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
+    jacoco
 }
 
 group = "com.supportai"
@@ -50,8 +51,30 @@ tasks.withType<Test> {
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     jvmArgs("-Duser.timezone=UTC")
 }
+
+// JaCoCo code coverage configuration.
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+// Generate coverage reports after running tests.
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+
+    reports {
+        html.required = true
+        xml.required = true
+        csv.required = false
+    }
+}
+
 // Run the test suite before regenerating the README.
 val testTask = tasks.named<Test>("test")
+
 // Generates the auto-managed section of README.md.
 tasks.register("updateReadme") {
     dependsOn(testTask)
@@ -154,7 +177,7 @@ tasks.register("updateReadme") {
         val testReportDir = projectDir.resolve("build/test-results/test")
 
         val testSummary = if (!testReportDir.exists()) {
-            "No test reports available. Run `.\u005c\u005cgradlew.bat test`."
+            "No test reports available. Run `./gradlew test`."
         } else {
             val reportFiles = testReportDir
                 .listFiles { file ->

@@ -1,6 +1,14 @@
 
 package com.supportai.ticket.service;
 
+import com.supportai.ticket.dto.PageResponse;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
+import java.util.List;
+
 import com.supportai.audit.service.TicketAuditLogService;
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
@@ -536,4 +544,55 @@ void agentShouldUpdateTicketStatusAndRecordAuditEvent() {
             eq("IN_PROGRESS")
     );
 }
+
+
+@Test
+void customerShouldGetOnlyTheirOwnTickets() {
+    // Arrange
+    Long customerId = 10L;
+
+    User customer = mock(User.class);
+    when(customer.getId()).thenReturn(customerId);
+
+    Ticket ticket = new Ticket(
+            "My ticket",
+            "I need technical support.",
+            "OPEN"
+    );
+    ticket.setCreatedBy(customer);
+
+    Pageable pageable = PageRequest.of(
+            0,
+            10,
+            Sort.by(Sort.Direction.ASC, "createdAt")
+    );
+
+    when(ticketRepository.findByCreatedById(
+            eq(customerId),
+            any(Pageable.class)
+    )).thenReturn(new PageImpl<>(List.of(ticket), pageable, 1));
+
+    // Act
+    PageResponse<TicketResponse> response = ticketService.getTickets(
+            0,
+            10,
+            "createdAt",
+            "asc",
+            null,
+            null,
+            customerId,
+            Role.CUSTOMER
+    );
+
+    // Assert
+    assertEquals(1, response.content().size());
+    assertEquals("My ticket", response.content().get(0).title());
+    assertEquals(customerId, response.content().get(0).createdBy());
+
+    verify(ticketRepository).findByCreatedById(
+            eq(customerId),
+            any(Pageable.class)
+    );
+}
+
 }
