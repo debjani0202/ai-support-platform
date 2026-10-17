@@ -3,6 +3,7 @@ package com.supportai.ticket.comment.service;
 
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
+import com.supportai.notification.service.NotificationService;
 import com.supportai.ticket.comment.dto.CommentResponse;
 import com.supportai.ticket.comment.dto.CreateCommentRequest;
 import com.supportai.ticket.comment.entity.TicketComment;
@@ -26,14 +27,16 @@ public class TicketCommentService {
     private final TicketCommentRepository commentRepository;
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
-
-    public TicketCommentService(
+    private final NotificationService notificationService;
+public TicketCommentService(
             TicketCommentRepository commentRepository,
             TicketRepository ticketRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     // Add a comment after verifying the user's access to the ticket.
@@ -59,6 +62,33 @@ public class TicketCommentService {
                 request.content().trim());
 
         TicketComment savedComment = commentRepository.save(comment);
+
+        // Notify the ticket creator unless they wrote the comment.
+        User creator = ticket.getCreatedBy();
+        if (creator != null && !creator.getId().equals(currentUserId)) {
+            notificationService.createNotification(
+                    creator,
+                    ticket,
+                    "NEW_COMMENT",
+                    "New comment on ticket #" + ticket.getId()
+                            + ": " + ticket.getTitle()
+            );
+        }
+
+        // Notify the assigned agent, avoiding duplicate recipients.
+        User assignedAgent = ticket.getAssignedTo();
+        if (assignedAgent != null
+                && !assignedAgent.getId().equals(currentUserId)
+                && (creator == null
+                    || !creator.getId().equals(assignedAgent.getId()))) {
+            notificationService.createNotification(
+                    assignedAgent,
+                    ticket,
+                    "NEW_COMMENT",
+                    "New comment on ticket #" + ticket.getId()
+                            + ": " + ticket.getTitle()
+            );
+        }
 
         return mapToResponse(savedComment);
     }

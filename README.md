@@ -29,6 +29,11 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/exception/GlobalExceptionHandler.java`
 - `src/main/java/com/supportai/exception/ResourceNotFoundException.java`
 - `src/main/java/com/supportai/health/HealthController.java`
+- `src/main/java/com/supportai/notification/controller/NotificationController.java`
+- `src/main/java/com/supportai/notification/dto/NotificationResponse.java`
+- `src/main/java/com/supportai/notification/entity/Notification.java`
+- `src/main/java/com/supportai/notification/repository/NotificationRepository.java`
+- `src/main/java/com/supportai/notification/service/NotificationService.java`
 - `src/main/java/com/supportai/security/SecurityConfig.java`
 - `src/main/java/com/supportai/security/jwt/JwtConfig.java`
 - `src/main/java/com/supportai/security/jwt/JwtService.java`
@@ -76,10 +81,13 @@ The project focuses on secure authentication, ticket management, database persis
 
 - `DELETE` `/api/tickets/{id}` — `TicketController`
 - `GET` `/api/health` — `HealthController`
+- `GET` `/api/notifications/unread-count` — `NotificationController`
+- `GET` `/api/notifications` — `NotificationController`
 - `GET` `/api/tickets/{id}` — `TicketController`
 - `GET` `/api/tickets` — `TicketController`
 - `GET` `` — `TicketAuditLogController`
 - `GET` `` — `TicketCommentController`
+- `PATCH` `/api/notifications/{id}/read` — `NotificationController`
 - `PATCH` `/api/tickets/{id}/assign` — `TicketController`
 - `POST` `/api/auth/change-password` — `AuthController`
 - `POST` `/api/auth/login` — `AuthController`

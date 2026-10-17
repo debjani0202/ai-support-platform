@@ -10,6 +10,7 @@ import org.springframework.data.domain.Sort;
 import java.util.List;
 
 import com.supportai.audit.service.TicketAuditLogService;
+import com.supportai.notification.service.NotificationService;
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.ticket.dto.CreateTicketRequest;
@@ -36,6 +37,7 @@ class TicketServiceTest {
     private TicketRepository ticketRepository;
     private UserRepository userRepository;
     private TicketAuditLogService auditLogService;
+    private NotificationService notificationService;
     private TicketService ticketService;
 
     @BeforeEach
@@ -43,12 +45,13 @@ class TicketServiceTest {
         ticketRepository = mock(TicketRepository.class);
         userRepository = mock(UserRepository.class);
         auditLogService = mock(TicketAuditLogService.class);
+        notificationService = mock(NotificationService.class);
 
         ticketService = new TicketService(
                 ticketRepository,
                 userRepository,
-                auditLogService
-        );
+                auditLogService,
+                notificationService);
     }
 
     @Test

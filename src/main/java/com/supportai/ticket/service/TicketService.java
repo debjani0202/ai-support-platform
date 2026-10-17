@@ -4,6 +4,7 @@ package com.supportai.ticket.service;
 import com.supportai.audit.service.TicketAuditLogService;
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
+import com.supportai.notification.service.NotificationService;
 import com.supportai.ticket.dto.CreateTicketRequest;
 import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
@@ -37,6 +38,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final TicketAuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     /**
      * Constructor injection lets Spring provide all required dependencies.
@@ -44,11 +46,13 @@ public class TicketService {
     public TicketService(
             TicketRepository ticketRepository,
             UserRepository userRepository,
-            TicketAuditLogService auditLogService
+            TicketAuditLogService auditLogService,
+            NotificationService notificationService
     ) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -307,6 +311,7 @@ public class TicketService {
         // Only agents and administrators can change ticket status.
         if (currentUserRole == Role.AGENT
                 || currentUserRole == Role.ADMIN) {
+            validateStatusTransition(oldStatus, request.status());
             ticket.setStatus(request.status());
         }
 
@@ -323,6 +328,41 @@ public class TicketService {
                     oldStatus,
                     updatedTicket.getStatus()
             );
+            Long creatorId = updatedTicket.getCreatedBy().getId();
+
+            User assignedAgent = updatedTicket.getAssignedTo();
+            Long assignedAgentId = assignedAgent != null
+                    ? assignedAgent.getId()
+                    : null;
+
+            String notificationMessage =
+                    "Ticket #" + updatedTicket.getId()
+                            + " status changed from "
+                            + oldStatus + " to "
+                            + updatedTicket.getStatus()
+                            + ": " + updatedTicket.getTitle();
+
+            // Notify the creator unless they made the change.
+            if (!Objects.equals(creatorId, currentUserId)) {
+                notificationService.createNotification(
+                        updatedTicket.getCreatedBy(),
+                        updatedTicket,
+                        "TICKET_UPDATED",
+                        notificationMessage
+                );
+            }
+
+            // Notify the assigned agent without duplicates.
+            if (assignedAgent != null
+                    && !Objects.equals(assignedAgentId, currentUserId)
+                    && !Objects.equals(assignedAgentId, creatorId)) {
+                notificationService.createNotification(
+                        assignedAgent,
+                        updatedTicket,
+                        "TICKET_UPDATED",
+                        notificationMessage
+                );
+            }
         }
 
         return mapToResponse(updatedTicket);
@@ -372,6 +412,15 @@ public class TicketService {
                     "ASSIGNED",
                     oldAgentId != null ? oldAgentId.toString() : null,
                     agent.getId().toString()
+            );
+
+            notificationService.createNotification(
+                    agent,
+                    updatedTicket,
+                    "TICKET_ASSIGNED",
+                    "Ticket #" + updatedTicket.getId()
+                            + " has been assigned to you: "
+                            + updatedTicket.getTitle()
             );
         }
 
@@ -488,4 +537,28 @@ public class TicketService {
                 ticket.getUpdatedAt()
         );
     }
+
+
+private void validateStatusTransition(String currentStatus, String nextStatus) {
+    if (Objects.equals(currentStatus, nextStatus)) {
+        return;
+    }
+
+    boolean allowed = switch (currentStatus) {
+        case "OPEN" -> "IN_PROGRESS".equals(nextStatus);
+        case "IN_PROGRESS" -> "RESOLVED".equals(nextStatus);
+        case "RESOLVED" -> "CLOSED".equals(nextStatus);
+        case "CLOSED" -> false;
+        default -> false;
+    };
+
+    if (!allowed) {
+        throw new IllegalArgumentException(
+                "Invalid ticket status transition: "
+                        + currentStatus + " -> " + nextStatus
+        );
+    }
+}
+
+
 }
