@@ -53,6 +53,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/ticket/entity/TicketCategory.java`
 - `src/main/java/com/supportai/ticket/entity/TicketPriority.java`
 - `src/main/java/com/supportai/ticket/repository/TicketRepository.java`
+- `src/main/java/com/supportai/ticket/repository/TicketSpecifications.java`
 - `src/main/java/com/supportai/ticket/service/TicketService.java`
 - `src/main/java/com/supportai/user/entity/Role.java`
 - `src/main/java/com/supportai/user/entity/User.java`

@@ -570,8 +570,8 @@ void customerShouldGetOnlyTheirOwnTickets() {
             Sort.by(Sort.Direction.ASC, "createdAt")
     );
 
-    when(ticketRepository.findByCreatedById(
-            eq(customerId),
+    when(ticketRepository.findAll(
+            any(org.springframework.data.jpa.domain.Specification.class),
             any(Pageable.class)
     )).thenReturn(new PageImpl<>(List.of(ticket), pageable, 1));
 
@@ -583,6 +583,9 @@ void customerShouldGetOnlyTheirOwnTickets() {
             "asc",
             null,
             null,
+            null,
+            null,
+            null,
             customerId,
             Role.CUSTOMER
     );
@@ -592,8 +595,8 @@ void customerShouldGetOnlyTheirOwnTickets() {
     assertEquals("My ticket", response.content().get(0).title());
     assertEquals(customerId, response.content().get(0).createdBy());
 
-    verify(ticketRepository).findByCreatedById(
-            eq(customerId),
+    verify(ticketRepository).findAll(
+            any(org.springframework.data.jpa.domain.Specification.class),
             any(Pageable.class)
     );
 }

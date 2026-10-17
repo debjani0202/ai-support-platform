@@ -10,7 +10,10 @@ import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
 import com.supportai.ticket.dto.UpdateTicketRequest;
 import com.supportai.ticket.entity.Ticket;
+import com.supportai.ticket.entity.TicketPriority;
+import com.supportai.ticket.entity.TicketCategory;
 import com.supportai.ticket.repository.TicketRepository;
+import com.supportai.ticket.repository.TicketSpecifications;
 import com.supportai.user.entity.Role;
 import com.supportai.user.entity.User;
 import com.supportai.user.repository.UserRepository;
@@ -19,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,6 +103,9 @@ public class TicketService {
             String direction,
             String status,
             String search,
+            TicketPriority priority,
+            TicketCategory category,
+            Long assignedAgentId,
             Long currentUserId,
             Role currentUserRole
     ) {
@@ -136,110 +143,59 @@ public class TicketService {
             );
         }
 
-        Sort.Direction sortDirection =
-                Sort.Direction.fromString(direction);
+        // Only administrators may select another agent's tickets.
+        if (assignedAgentId != null
+                && currentUserRole != Role.ADMIN) {
+            throw new ForbiddenException(
+                    "Only administrators can filter by assigned agent"
+            );
+        }
+
+        if (assignedAgentId != null && assignedAgentId < 1) {
+            throw new IllegalArgumentException(
+                    "Assigned agent ID must be positive"
+            );
+        }
 
         Pageable pageable = PageRequest.of(
                 page,
                 size,
-                Sort.by(sortDirection, sortBy)
+                Sort.by(
+                        Sort.Direction.fromString(direction),
+                        sortBy
+                )
         );
 
-        boolean hasStatus = status != null && !status.isBlank();
-        boolean hasSearch = search != null && !search.isBlank();
+        // Build filters dynamically so any combination can be used.
+        Specification<Ticket> specification =
+                TicketSpecifications.hasStatus(status)
+                        .and(TicketSpecifications.hasPriority(priority))
+                        .and(TicketSpecifications.hasCategory(category))
+                        .and(TicketSpecifications.matchesSearch(search));
 
-        String searchText = hasSearch ? search.trim() : "";
-
-        Page<Ticket> ticketPage;
-
-        if (currentUserRole == Role.ADMIN) {
-
-            if (hasStatus && hasSearch) {
-                ticketPage = ticketRepository
-                        .findByStatusIgnoreCaseAndTitleContainingIgnoreCase(
-                                status.trim(),
-                                searchText,
-                                pageable
-                        );
-            } else if (hasStatus) {
-                ticketPage = ticketRepository
-                        .findByStatusIgnoreCase(
-                                status.trim(),
-                                pageable
-                        );
-            } else if (hasSearch) {
-                ticketPage = ticketRepository
-                        .findByTitleContainingIgnoreCase(
-                                searchText,
-                                pageable
-                        );
-            } else {
-                ticketPage = ticketRepository.findAll(pageable);
-            }
-
-        } else if (currentUserRole == Role.CUSTOMER) {
-
-            if (hasStatus && hasSearch) {
-                ticketPage = ticketRepository
-                        .findByCreatedByIdAndStatusIgnoreCaseAndTitleContainingIgnoreCase(
-                                currentUserId,
-                                status.trim(),
-                                searchText,
-                                pageable
-                        );
-            } else if (hasStatus) {
-                ticketPage = ticketRepository
-                        .findByCreatedByIdAndStatusIgnoreCase(
-                                currentUserId,
-                                status.trim(),
-                                pageable
-                        );
-            } else if (hasSearch) {
-                ticketPage = ticketRepository
-                        .findByCreatedByIdAndTitleContainingIgnoreCase(
-                                currentUserId,
-                                searchText,
-                                pageable
-                        );
-            } else {
-                ticketPage = ticketRepository
-                        .findByCreatedById(currentUserId, pageable);
-            }
-
+        // Enforce visibility in the database query itself.
+        if (currentUserRole == Role.CUSTOMER) {
+            specification = specification.and(
+                    TicketSpecifications.createdBy(currentUserId)
+            );
         } else if (currentUserRole == Role.AGENT) {
-
-            if (hasStatus && hasSearch) {
-                ticketPage = ticketRepository
-                        .findByAssignedToIdAndStatusIgnoreCaseAndTitleContainingIgnoreCase(
-                                currentUserId,
-                                status.trim(),
-                                searchText,
-                                pageable
-                        );
-            } else if (hasStatus) {
-                ticketPage = ticketRepository
-                        .findByAssignedToIdAndStatusIgnoreCase(
-                                currentUserId,
-                                status.trim(),
-                                pageable
-                        );
-            } else if (hasSearch) {
-                ticketPage = ticketRepository
-                        .findByAssignedToIdAndTitleContainingIgnoreCase(
-                                currentUserId,
-                                searchText,
-                                pageable
-                        );
-            } else {
-                ticketPage = ticketRepository
-                        .findByAssignedToId(currentUserId, pageable);
-            }
-
+            specification = specification.and(
+                    TicketSpecifications.assignedTo(currentUserId)
+            );
+        } else if (currentUserRole == Role.ADMIN) {
+            specification = specification.and(
+                    TicketSpecifications.assignedToIfProvided(
+                            assignedAgentId
+                    )
+            );
         } else {
             throw new ForbiddenException(
                     "You are not allowed to access tickets"
             );
         }
+
+        Page<Ticket> ticketPage =
+                ticketRepository.findAll(specification, pageable);
 
         return new PageResponse<>(
                 ticketPage.getContent()
@@ -254,7 +210,6 @@ public class TicketService {
                 ticketPage.isLast()
         );
     }
-
     /**
      * Retrieves a ticket after checking the user's access permissions.
      */

@@ -7,6 +7,8 @@ import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
 import com.supportai.ticket.dto.UpdateTicketRequest;
 import com.supportai.ticket.service.TicketService;
+import com.supportai.ticket.entity.TicketPriority;
+import com.supportai.ticket.entity.TicketCategory;
 import com.supportai.user.entity.Role;
 
 import jakarta.validation.Valid;
@@ -60,6 +62,9 @@ public class TicketController {
             @RequestParam(defaultValue = "desc") String direction,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) TicketPriority priority,
+            @RequestParam(required = false) TicketCategory category,
+            @RequestParam(required = false) Long assignedAgentId,
             Authentication authentication
     ) {
         Long currentUserId = Long.valueOf(
@@ -77,6 +82,9 @@ public class TicketController {
                 direction,
                 status,
                 search,
+                priority,
+                category,
+                assignedAgentId,
                 currentUserId,
                 currentUserRole
         );
