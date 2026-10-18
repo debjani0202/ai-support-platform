@@ -18,7 +18,6 @@ public record CreateTicketRequest(
         @NotBlank(message = "Description is required")
         String description,
 
-        @NotNull(message = "Category is required")
         TicketCategory category,
 
         @NotNull(message = "Priority is required")

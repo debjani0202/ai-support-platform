@@ -1,6 +1,8 @@
 
 package com.supportai.ticket.service;
 
+import com.supportai.ai.TicketCategoryClassifier;
+
 import com.supportai.audit.service.TicketAuditLogService;
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
@@ -43,6 +45,7 @@ public class TicketService {
     private final UserRepository userRepository;
     private final TicketAuditLogService auditLogService;
     private final NotificationService notificationService;
+    private final TicketCategoryClassifier categoryClassifier;
 
     /**
      * Constructor injection lets Spring provide all required dependencies.
@@ -51,12 +54,14 @@ public class TicketService {
             TicketRepository ticketRepository,
             UserRepository userRepository,
             TicketAuditLogService auditLogService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            TicketCategoryClassifier categoryClassifier
     ) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
         this.notificationService = notificationService;
+        this.categoryClassifier = categoryClassifier;
     }
 
     /**
@@ -71,7 +76,16 @@ public class TicketService {
         Ticket ticket = new Ticket();
         ticket.setTitle(request.title());
         ticket.setDescription(request.description());
-        ticket.setCategory(request.category());
+        TicketCategory category = request.category();
+
+        if (category == null) {
+            category = categoryClassifier.classify(
+                    request.title(),
+                    request.description()
+            );
+        }
+
+        ticket.setCategory(category);
         ticket.setPriority(request.priority());
         ticket.setCreatedBy(currentUser);
 
@@ -260,7 +274,16 @@ public class TicketService {
 
         ticket.setTitle(request.title());
         ticket.setDescription(request.description());
-        ticket.setCategory(request.category());
+        TicketCategory category = request.category();
+
+        if (category == null) {
+            category = categoryClassifier.classify(
+                    request.title(),
+                    request.description()
+            );
+        }
+
+        ticket.setCategory(category);
         ticket.setPriority(request.priority());
 
         // Only agents and administrators can change ticket status.

@@ -1,6 +1,8 @@
 
 package com.supportai.ticket.service;
 
+import com.supportai.ai.TicketCategoryClassifier;
+
 import com.supportai.ticket.dto.PageResponse;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +32,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class TicketServiceTest {
@@ -38,6 +41,7 @@ class TicketServiceTest {
     private UserRepository userRepository;
     private TicketAuditLogService auditLogService;
     private NotificationService notificationService;
+    private TicketCategoryClassifier categoryClassifier;
     private TicketService ticketService;
 
     @BeforeEach
@@ -46,12 +50,14 @@ class TicketServiceTest {
         userRepository = mock(UserRepository.class);
         auditLogService = mock(TicketAuditLogService.class);
         notificationService = mock(NotificationService.class);
+        categoryClassifier = mock(TicketCategoryClassifier.class);
 
         ticketService = new TicketService(
                 ticketRepository,
                 userRepository,
                 auditLogService,
-                notificationService);
+                notificationService,
+                categoryClassifier);
     }
 
     @Test
@@ -106,6 +112,66 @@ class TicketServiceTest {
         );
     }
 
+    @Test
+    void createTicketShouldClassifyCategoryWhenCategoryIsMissing() {
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+        when(userRepository.findById(customerId))
+                .thenReturn(Optional.of(customer));
+
+        when(categoryClassifier.classify(
+                anyString(), anyString()))
+                .thenReturn(TicketCategory.ACCOUNT_ACCESS);
+
+        when(ticketRepository.save(any(Ticket.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateTicketRequest request = new CreateTicketRequest(
+                "Cannot log in",
+                "I cannot access my account.",
+                null,
+                TicketPriority.HIGH
+        );
+
+        TicketResponse response =
+                ticketService.createTicket(request, customerId);
+
+        assertEquals(TicketCategory.ACCOUNT_ACCESS, response.category());
+
+        verify(categoryClassifier).classify(
+                "Cannot log in",
+                "I cannot access my account."
+        );
+        verify(ticketRepository).save(any(Ticket.class));
+    }
+
+    @Test
+    void createTicketShouldNotClassifyCategoryWhenCategoryIsProvided() {
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+        when(userRepository.findById(customerId))
+                .thenReturn(Optional.of(customer));
+
+        when(ticketRepository.save(any(Ticket.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateTicketRequest request = new CreateTicketRequest(
+                "Cannot log in",
+                "I cannot access my account.",
+                TicketCategory.ACCOUNT_ACCESS,
+                TicketPriority.HIGH
+        );
+
+        TicketResponse response =
+                ticketService.createTicket(request, customerId);
+
+        assertEquals(TicketCategory.ACCOUNT_ACCESS, response.category());
+        verifyNoInteractions(categoryClassifier);
+    }
     @Test
     void createTicketShouldFailWhenCustomerDoesNotExist() {
         // Arrange
