@@ -27,6 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 
     implementation("org.flywaydb:flyway-database-postgresql")
@@ -165,7 +166,7 @@ tasks.register("updateReadme") {
                         "/" + methodPath.trimStart('/')
                 }
 
-                "- `$method` `$fullPath` — `${file.nameWithoutExtension}`"
+                "- `$method` `$fullPath` â€” `${file.nameWithoutExtension}`"
             }.toList()
         }.distinct().sorted()
             .ifEmpty {

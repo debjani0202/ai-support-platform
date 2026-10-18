@@ -12,6 +12,8 @@ The project focuses on secure authentication, ticket management, database persis
 ### Project Structure
 
 - `src/main/java/com/supportai/AiSupportPlatformApplication.java`
+- `src/main/java/com/supportai/ai/OllamaTicketCategoryClassifier.java`
+- `src/main/java/com/supportai/ai/TicketCategoryClassifier.java`
 - `src/main/java/com/supportai/audit/controller/TicketAuditLogController.java`
 - `src/main/java/com/supportai/audit/dto/TicketAuditLogResponse.java`
 - `src/main/java/com/supportai/audit/entity/TicketAuditLog.java`
@@ -80,26 +82,26 @@ The project focuses on secure authentication, ticket management, database persis
 
 ### Discovered API Endpoints
 
-- `DELETE` `/api/tickets/{id}` — `TicketController`
-- `GET` `/api/health` — `HealthController`
-- `GET` `/api/notifications/unread-count` — `NotificationController`
-- `GET` `/api/notifications` — `NotificationController`
-- `GET` `/api/tickets/{id}` — `TicketController`
-- `GET` `/api/tickets` — `TicketController`
-- `GET` `` — `TicketAuditLogController`
-- `GET` `` — `TicketCommentController`
-- `PATCH` `/api/notifications/{id}/read` — `NotificationController`
-- `PATCH` `/api/tickets/{id}/assign` — `TicketController`
-- `POST` `/api/auth/change-password` — `AuthController`
-- `POST` `/api/auth/login` — `AuthController`
-- `POST` `/api/auth/register` — `AuthController`
-- `POST` `/api/tickets` — `TicketController`
-- `POST` `` — `TicketCommentController`
-- `PUT` `/api/tickets/{id}` — `TicketController`
+- `DELETE` `/api/tickets/{id}` â€” `TicketController`
+- `GET` `/api/health` â€” `HealthController`
+- `GET` `/api/notifications/unread-count` â€” `NotificationController`
+- `GET` `/api/notifications` â€” `NotificationController`
+- `GET` `/api/tickets/{id}` â€” `TicketController`
+- `GET` `/api/tickets` â€” `TicketController`
+- `GET` `` â€” `TicketAuditLogController`
+- `GET` `` â€” `TicketCommentController`
+- `PATCH` `/api/notifications/{id}/read` â€” `NotificationController`
+- `PATCH` `/api/tickets/{id}/assign` â€” `TicketController`
+- `POST` `/api/auth/change-password` â€” `AuthController`
+- `POST` `/api/auth/login` â€” `AuthController`
+- `POST` `/api/auth/register` â€” `AuthController`
+- `POST` `/api/tickets` â€” `TicketController`
+- `POST` `` â€” `TicketCommentController`
+- `PUT` `/api/tickets/{id}` â€” `TicketController`
 
 ### Test Results
 
-**Latest available report counts:** 31 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Latest available report counts:** 35 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview
