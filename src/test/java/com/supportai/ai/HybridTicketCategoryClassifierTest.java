@@ -63,4 +63,24 @@ class HybridTicketCategoryClassifierTest {
                 "What are your support hours?"
         );
     }
+    @Test
+    void shouldClassifyApplicationCrashWithoutCallingOllama() {
+        RuleBasedTicketCategoryClassifier realRuleBasedClassifier =
+                new RuleBasedTicketCategoryClassifier();
+
+        HybridTicketCategoryClassifier classifier =
+                new HybridTicketCategoryClassifier(
+                        realRuleBasedClassifier,
+                        ollamaClassifier
+                );
+
+        TicketCategory result = classifier.classify(
+                "Application crashes",
+                "The application closes unexpectedly whenever I click the Reports button."
+        );
+
+        assertEquals(TicketCategory.BUG_REPORT, result);
+        verifyNoInteractions(ollamaClassifier);
+    }
+
 }
