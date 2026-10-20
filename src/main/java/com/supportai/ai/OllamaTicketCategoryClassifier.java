@@ -58,22 +58,24 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
     public TicketCategory classify(String title, String description) {
         try {
             String prompt = """
-                    You are a support ticket classification system.
-                    Choose exactly one category based on the main problem described.
+                    You classify customer support tickets. Choose exactly one category based on the main problem described.
 
                     Category definitions:
-                    - ACCOUNT_ACCESS: Login failures, passwords, account lockouts, or authentication problems.
-                    - PAYMENT: Payments, billing, refunds, invoices, or subscription charges.
-                    - BUG_REPORT: Software defects, crashes, unexpected behavior, or broken features.
-                    - TECHNICAL_ISSUE: Technical difficulties where a software defect is not clearly indicated.
+                    - ACCOUNT_ACCESS: Login failures, password problems, account lockouts, or authentication issues.
+                    - PAYMENT: Payment transactions, duplicate charges, failed payments, refunds, or payment processing problems.
+                    - TECHNICAL_ISSUE: General technical difficulties, slow performance, or connectivity problems without a specific software defect.
+                    - BUG_REPORT: The application crashes, calculates an incorrect result, displays incorrect data, or behaves unexpectedly.
                     - FEATURE_REQUEST: Requests for new functionality or improvements.
-                    - GENERAL_QUERY: General questions that do not fit the other categories.
+                    - GENERAL_QUERY: General questions that do not fit another category.
 
-                    Important rules:
-                    - A software crash or reproducible unexpected application behavior should be BUG_REPORT.
-                    - Do not choose ACCOUNT_ACCESS unless the main problem concerns login, authentication, passwords, or account access.
-                    - Classify the problem described, not just individual words.
-                    - Return only the category name.
+                    Important classification rules:
+                    - If the application crashes or produces an incorrect calculation or result, choose BUG_REPORT.
+                    - If a payment transaction is duplicated, fails, or is processed incorrectly, choose PAYMENT.
+                    - Do not choose PAYMENT merely because a ticket mentions an invoice, bill, or amount. If the software calculates the amount incorrectly, choose BUG_REPORT.
+                    - If the application is slow or cannot connect, choose TECHNICAL_ISSUE unless a specific software defect is described.
+                    - Choose ACCOUNT_ACCESS only when the main problem concerns login, authentication, passwords, or account access.
+                    - Classify the underlying problem, not just individual keywords.
+                    - Return only the category name in the required JSON format.
 
                     Title: %s
                     Description: %s
@@ -101,12 +103,25 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
             categories.add("GENERAL_QUERY");
 
             var format = objectMapper.createObjectNode();
-            format.put("type", "string");
-            format.set("enum", categories);
+            format.put("type", "object");
+
+            var properties = objectMapper.createObjectNode();
+            var categorySchema = objectMapper.createObjectNode();
+            categorySchema.put("type", "string");
+            categorySchema.set("enum", categories);
+            properties.set("category", categorySchema);
+
+            format.set("properties", properties);
+
+            var required = objectMapper.createArrayNode();
+            required.add("category");
+            format.set("required", required);
+            format.put("additionalProperties", false);
+
             requestBody.set("format", format);
 
             var options = objectMapper.createObjectNode();
-            options.put("num_predict", 30);
+            options.put("num_predict", 50);
             options.put("temperature", 0);
             requestBody.set("options", options);
 
@@ -135,15 +150,12 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
             JsonNode responseJson =
                     objectMapper.readTree(response.body());
 
-            String categoryText =
-                    responseJson.path("message").path("content").asText("").trim();
+            String content =
+                    responseJson.path("message").path("content").asText("");
 
-            if (categoryText.length() >= 2
-                    && categoryText.startsWith("\"")
-                    && categoryText.endsWith("\"")) {
-                categoryText = categoryText.substring(
-                        1, categoryText.length() - 1).trim();
-            }
+            JsonNode categoryJson = objectMapper.readTree(content);
+            String categoryText =
+                    categoryJson.path("category").asText("").trim();
 
             try {
                 return TicketCategory.valueOf(

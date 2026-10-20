@@ -13,7 +13,9 @@ import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -60,7 +62,7 @@ class OllamaTicketCategoryClassifierTest {
             throws IOException, InterruptedException {
 
         HttpClient httpClient = mockHttpClient(
-                chatResponse("ACCOUNT_ACCESS"), 200);
+                chatResponse("{\"category\":\"ACCOUNT_ACCESS\"}"), 200);
 
         TicketCategory result = createClassifier(httpClient).classify(
                 "Cannot log in",
@@ -75,7 +77,7 @@ class OllamaTicketCategoryClassifierTest {
             throws IOException, InterruptedException {
 
         HttpClient httpClient = mockHttpClient(
-                chatResponse(" payment "), 200);
+                chatResponse("{\"category\":\" payment \"}"), 200);
 
         TicketCategory result = createClassifier(httpClient).classify(
                 "Payment problem",
@@ -86,11 +88,11 @@ class OllamaTicketCategoryClassifierTest {
     }
 
     @Test
-    void classifyAcceptsQuotedCategory()
+    void classifyAcceptsJsonCategory()
             throws IOException, InterruptedException {
 
         HttpClient httpClient = mockHttpClient(
-                chatResponse("\"ACCOUNT_ACCESS\""), 200);
+                chatResponse("{\"category\":\"ACCOUNT_ACCESS\"}"), 200);
 
         TicketCategory result = createClassifier(httpClient).classify(
                 "Cannot log in",
@@ -105,7 +107,7 @@ class OllamaTicketCategoryClassifierTest {
             throws IOException, InterruptedException {
 
         HttpClient httpClient = mockHttpClient(
-                chatResponse("UNKNOWN_CATEGORY"), 200);
+                chatResponse("{\"category\":\"UNKNOWN_CATEGORY\"}"), 200);
 
         assertThrows(
                 IllegalStateException.class,
@@ -146,7 +148,7 @@ class OllamaTicketCategoryClassifierTest {
         HttpResponse<String> response = mock(HttpResponse.class);
 
         when(response.statusCode()).thenReturn(200);
-        when(response.body()).thenReturn(chatResponse("BUG_REPORT"));
+        when(response.body()).thenReturn(chatResponse("{\"category\":\"BUG_REPORT\"}"));
 
         when(httpClient.send(
                 any(HttpRequest.class),
@@ -196,13 +198,29 @@ class OllamaTicketCategoryClassifierTest {
         JsonNode requestJson = objectMapper.readTree(capturedBody.get());
 
         assertEquals(false, requestJson.path("think").asBoolean());
-        assertEquals(30, requestJson.path("options")
+        assertEquals(50, requestJson.path("options")
                 .path("num_predict").asInt());
         assertEquals(0, requestJson.path("options")
                 .path("temperature").asInt());
+        assertEquals("object", requestJson.path("format")
+                .path("type").asText());
         assertEquals("string", requestJson.path("format")
+                .path("properties").path("category")
                 .path("type").asText());
         assertEquals(6, requestJson.path("format")
+                .path("properties").path("category")
                 .path("enum").size());
+
+        String prompt = requestJson.path("messages")
+                .get(0).path("content").asText();
+
+        assertTrue(prompt.contains(
+                "If the application crashes or produces an incorrect calculation or result, choose BUG_REPORT."));
+        assertTrue(prompt.contains(
+                "If a payment transaction is duplicated, fails, or is processed incorrectly, choose PAYMENT."));
+        assertTrue(prompt.contains(
+                "Do not choose PAYMENT merely because a ticket mentions an invoice, bill, or amount."));
+        assertTrue(prompt.contains(
+                "choose TECHNICAL_ISSUE unless a specific software defect is described."));
     }
 }
