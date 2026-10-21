@@ -23,7 +23,7 @@ public class RuleBasedTicketCategoryClassifier {
         if (containsAny(text,
                 "charged twice", "double charge", "payment failed",
                 "payment deducted", "refund", "billing issue",
-                "invoice", "subscription charge")) {
+                "subscription charge")) {
             return TicketCategory.PAYMENT;
         }
 

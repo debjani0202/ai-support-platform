@@ -64,4 +64,13 @@ class RuleBasedTicketCategoryClassifierTest {
                 )
         );
     }
+    @Test
+    void doesNotClassifyIncorrectInvoiceCalculationAsPayment() {
+        assertNull(
+                classifier.classify(
+                        "Incorrect total shown on my invoice",
+                        "The application calculates my invoice total as 1200, but the correct total should be 1000."
+                )
+        );
+    }
 }
