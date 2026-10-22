@@ -1,12 +1,17 @@
 package com.supportai.ai;
 
 import com.supportai.ticket.entity.TicketCategory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 @Component
 @Primary
 public class HybridTicketCategoryClassifier implements TicketCategoryClassifier {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(HybridTicketCategoryClassifier.class);
 
     private final RuleBasedTicketCategoryClassifier ruleBasedClassifier;
     private final OllamaTicketCategoryClassifier ollamaClassifier;
@@ -27,6 +32,14 @@ public class HybridTicketCategoryClassifier implements TicketCategoryClassifier 
             return category;
         }
 
-        return ollamaClassifier.classify(title, description);
+        try {
+            return ollamaClassifier.classify(title, description);
+        } catch (RuntimeException exception) {
+            logger.warn(
+                    "AI ticket classification failed; leaving category unclassified. Error type: {}",
+                    exception.getClass().getSimpleName()
+            );
+            return null;
+        }
     }
 }

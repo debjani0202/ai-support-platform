@@ -4,6 +4,7 @@ import com.supportai.ticket.entity.TicketCategory;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.*;
 
 class HybridTicketCategoryClassifierTest {
@@ -63,6 +64,7 @@ class HybridTicketCategoryClassifierTest {
                 "What are your support hours?"
         );
     }
+
     @Test
     void shouldClassifyApplicationCrashWithoutCallingOllama() {
         RuleBasedTicketCategoryClassifier realRuleBasedClassifier =
@@ -83,4 +85,27 @@ class HybridTicketCategoryClassifierTest {
         verifyNoInteractions(ollamaClassifier);
     }
 
+    @Test
+    void shouldReturnNullWhenOllamaFails() {
+        when(ruleBasedClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        )).thenReturn(null);
+
+        when(ollamaClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        )).thenThrow(new RuntimeException("Ollama is unavailable"));
+
+        TicketCategory result = hybridClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        );
+
+        assertNull(result);
+        verify(ollamaClassifier).classify(
+                "Question about support",
+                "What are your support hours?"
+        );
+    }
 }

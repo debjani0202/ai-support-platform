@@ -7,6 +7,8 @@ import com.supportai.ticket.entity.TicketCategory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -18,6 +20,8 @@ import java.util.Locale;
 
 @Component
 public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier {
+
+    private static final Logger log = LoggerFactory.getLogger(OllamaTicketCategoryClassifier.class);
 
     private final String baseUrl;
     private final String model;
@@ -56,6 +60,7 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
 
     @Override
     public TicketCategory classify(String title, String description) {
+        log.info("Ollama classification requested using model: {}", model);
         try {
             String prompt = """
                     You classify customer support tickets. Choose exactly one category based on the main problem described.
@@ -65,8 +70,9 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
                     - PAYMENT: Payment transactions, duplicate charges, failed payments, refunds, or payment processing problems.
                     - TECHNICAL_ISSUE: General technical difficulties, slow performance, or connectivity problems without a specific software defect.
                     - BUG_REPORT: The application crashes, calculates an incorrect result, displays incorrect data, or behaves unexpectedly.
-                    - FEATURE_REQUEST: Requests for new functionality or improvements.
-                    - GENERAL_QUERY: General questions that do not fit another category.
+                    - FEATURE_REQUEST: Requests for new functionality that does not currently exist, or explicit improvements to existing functionality.
+                    - GENERAL_QUERY: General questions, including how to use or access existing functionality.
+
 
                     Important classification rules:
                     - If the application crashes or produces an incorrect calculation or result, choose BUG_REPORT.
@@ -74,6 +80,8 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
                     - Do not choose PAYMENT merely because a ticket mentions an invoice, bill, or amount. If the software calculates the amount incorrectly, choose BUG_REPORT.
                     - If the application is slow or cannot connect, choose TECHNICAL_ISSUE unless a specific software defect is described.
                     - Choose ACCOUNT_ACCESS only when the main problem concerns login, authentication, passwords, or account access.
+                    - If the user asks how to use or change an existing feature, choose GENERAL_QUERY.
+                    - If the user asks to add functionality that does not exist, choose FEATURE_REQUEST.
                     - Classify the underlying problem, not just individual keywords.
                     - Return only the category name in the required JSON format.
 
@@ -158,8 +166,10 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
                     categoryJson.path("category").asText("").trim();
 
             try {
-                return TicketCategory.valueOf(
-                        categoryText.trim().toUpperCase(Locale.ROOT));
+                TicketCategory category = TicketCategory.valueOf(
+                        categoryText.toUpperCase(Locale.ROOT));
+                log.info("Ollama returned ticket category: {}", category);
+                return category;
             } catch (IllegalArgumentException exception) {
                 throw new IllegalStateException(
                         "Ollama returned an invalid ticket category");
