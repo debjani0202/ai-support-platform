@@ -136,7 +136,10 @@ tasks.register("updateReadme") {
             }
 
             // Read a simple class-level base path.
-            val classHeader = content.substringBefore("{")
+            val classDeclarationIndex =
+                Regex("\\bpublic\\s+class\\s+\\w+")
+                    .find(content)?.range?.first ?: content.length
+            val classHeader = content.substring(0, classDeclarationIndex)
             val basePath = Regex(
                 "@RequestMapping\\s*\\(\\s*(?:value\\s*=\\s*|path\\s*=\\s*)?\"([^\"]*)\""
             ).find(classHeader)?.groupValues?.get(1) ?: ""
@@ -166,7 +169,7 @@ tasks.register("updateReadme") {
                         "/" + methodPath.trimStart('/')
                 }
 
-                "- `$method` `$fullPath` â€” `${file.nameWithoutExtension}`"
+                "- `$method` `$fullPath` | `${file.nameWithoutExtension}`"
             }.toList()
         }.distinct().sorted()
             .ifEmpty {
@@ -226,7 +229,7 @@ tasks.register("updateReadme") {
             if (reportFiles.isEmpty()) {
                 "No test report files found. Run the Gradle test task."
             } else {
-                "**Latest available report counts:** $total tests, " +
+                "**Available test report totals:** $total tests, " +
                     "$failures failures, $errors errors, $skipped skipped. " +
                     "These counts do not establish whether the latest test run passed."
             }

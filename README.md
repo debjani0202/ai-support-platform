@@ -84,26 +84,26 @@ The project focuses on secure authentication, ticket management, database persis
 
 ### Discovered API Endpoints
 
-- `DELETE` `/api/tickets/{id}` â€” `TicketController`
-- `GET` `/api/health` â€” `HealthController`
-- `GET` `/api/notifications/unread-count` â€” `NotificationController`
-- `GET` `/api/notifications` â€” `NotificationController`
-- `GET` `/api/tickets/{id}` â€” `TicketController`
-- `GET` `/api/tickets` â€” `TicketController`
-- `GET` `` â€” `TicketAuditLogController`
-- `GET` `` â€” `TicketCommentController`
-- `PATCH` `/api/notifications/{id}/read` â€” `NotificationController`
-- `PATCH` `/api/tickets/{id}/assign` â€” `TicketController`
-- `POST` `/api/auth/change-password` â€” `AuthController`
-- `POST` `/api/auth/login` â€” `AuthController`
-- `POST` `/api/auth/register` â€” `AuthController`
-- `POST` `/api/tickets` â€” `TicketController`
-- `POST` `` â€” `TicketCommentController`
-- `PUT` `/api/tickets/{id}` â€” `TicketController`
+- `DELETE` `/api/tickets/{id}` | `TicketController`
+- `GET` `/api/health` | `HealthController`
+- `GET` `/api/notifications/unread-count` | `NotificationController`
+- `GET` `/api/notifications` | `NotificationController`
+- `GET` `/api/tickets/{id}` | `TicketController`
+- `GET` `/api/tickets/{ticketId}/audit-logs` | `TicketAuditLogController`
+- `GET` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
+- `GET` `/api/tickets` | `TicketController`
+- `PATCH` `/api/notifications/{id}/read` | `NotificationController`
+- `PATCH` `/api/tickets/{id}/assign` | `TicketController`
+- `POST` `/api/auth/change-password` | `AuthController`
+- `POST` `/api/auth/login` | `AuthController`
+- `POST` `/api/auth/register` | `AuthController`
+- `POST` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
+- `POST` `/api/tickets` | `TicketController`
+- `PUT` `/api/tickets/{id}` | `TicketController`
 
 ### Test Results
 
-**Latest available report counts:** 49 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 49 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview
