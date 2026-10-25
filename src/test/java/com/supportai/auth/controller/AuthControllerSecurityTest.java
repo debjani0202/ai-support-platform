@@ -146,4 +146,42 @@ class AuthControllerSecurityTest {
                                 """))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void registerWithPasswordExceeding72CharactersReturnsBadRequest()
+            throws Exception {
+
+        String longPassword = "A".repeat(73);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "name": "Jane Doe",
+                                    "email": "jane@example.com",
+                                    "password": "%s"
+                                }
+                                """.formatted(longPassword)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void authenticatedUserWithNewPasswordExceeding72CharactersGetsBadRequest()
+            throws Exception {
+
+        String longPassword = "B".repeat(73);
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "CUSTOMER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "currentPassword": "OldPassword123",
+                                    "newPassword": "%s"
+                                }
+                                """.formatted(longPassword)))
+                .andExpect(status().isBadRequest());
+    }
 }

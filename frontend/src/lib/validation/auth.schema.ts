@@ -25,8 +25,8 @@ export const registerSchema = z
       .max(255, 'Email must not exceed 255 characters'),
     password: z
       .string()
-      .min(8, 'Password must be between 8 and 100 characters')
-      .max(100, 'Password must not exceed 100 characters'),
+      .min(8, 'Password must be between 8 and 72 characters')
+      .max(72, 'Password must not exceed 72 characters'),
     confirmPassword: z
       .string()
       .min(1, 'Please confirm your password'),
