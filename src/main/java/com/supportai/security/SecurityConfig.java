@@ -45,6 +45,8 @@ public class SecurityConfig {
                         .permitAll()
 
                         // Defense-in-depth: endpoint-level role restrictions
+                        .requestMatchers(HttpMethod.GET, "/api/users/agents")
+                                .hasAnyRole("ADMIN", "AGENT")
                         .requestMatchers(HttpMethod.PATCH, "/api/tickets/*/assign")
                                 .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/tickets/*")
