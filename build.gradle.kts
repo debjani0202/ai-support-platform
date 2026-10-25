@@ -27,7 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    
+
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 
     implementation("org.flywaydb:flyway-database-postgresql")
@@ -46,7 +46,12 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+
     systemProperty("user.timezone", "Asia/Kolkata")
+
+    // Pass the test database password to the test worker.
+    environment("TEST_DB_PASSWORD", System.getenv("TEST_DB_PASSWORD"))
+    systemProperty("TEST_DB_PASSWORD", System.getenv("TEST_DB_PASSWORD"))
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
@@ -94,6 +99,7 @@ tasks.register("updateReadme") {
         require(readme.exists()) {
             "README.md does not exist in the project root."
         }
+
         require(sourceDir.exists()) {
             "Java source directory was not found."
         }
@@ -139,7 +145,9 @@ tasks.register("updateReadme") {
             val classDeclarationIndex =
                 Regex("\\bpublic\\s+class\\s+\\w+")
                     .find(content)?.range?.first ?: content.length
+
             val classHeader = content.substring(0, classDeclarationIndex)
+
             val basePath = Regex(
                 "@RequestMapping\\s*\\(\\s*(?:value\\s*=\\s*|path\\s*=\\s*)?\"([^\"]*)\""
             ).find(classHeader)?.groupValues?.get(1) ?: ""
@@ -199,18 +207,20 @@ tasks.register("updateReadme") {
 
             reportFiles.forEach { report ->
                 // Parse test XML using the JDK's XML parser.
+                // Prevent XML external-entity access.
                 val factory =
                     javax.xml.parsers.DocumentBuilderFactory.newInstance()
 
-                // Prevent XML external-entity access.
                 factory.setFeature(
                     "http://apache.org/xml/features/disallow-doctype-decl",
                     true
                 )
+
                 factory.setFeature(
                     "http://xml.org/sax/features/external-general-entities",
                     false
                 )
+
                 factory.setFeature(
                     "http://xml.org/sax/features/external-parameter-entities",
                     false
@@ -240,21 +250,25 @@ tasks.register("updateReadme") {
             appendLine()
             appendLine("### Project Structure")
             appendLine()
+
             sourceFiles.forEach { appendLine("- `$it`") }
 
             appendLine()
             appendLine("### Gradle Dependencies")
             appendLine()
+
             dependencyLines.forEach { appendLine(it) }
 
             appendLine()
             appendLine("### Discovered API Endpoints")
             appendLine()
+
             endpointLines.forEach { appendLine(it) }
 
             appendLine()
             appendLine("### Test Results")
             appendLine()
+
             appendLine(testSummary)
         }.trimEnd()
 
@@ -268,6 +282,7 @@ tasks.register("updateReadme") {
 
         // Preserve every part of the README outside the managed markers.
         val contentStart = startIndex + startMarker.length
+
         val updated = original.substring(0, contentStart) +
             "\n" + generated + "\n" +
             original.substring(endIndex)

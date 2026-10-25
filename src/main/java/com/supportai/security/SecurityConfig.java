@@ -7,6 +7,7 @@ import com.supportai.user.entity.Role;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -35,6 +36,12 @@ public class SecurityConfig {
                                 "/api/health",
                                 "/actuator/health")
                         .permitAll()
+
+                        // Defense-in-depth: endpoint-level role restrictions
+                        .requestMatchers(HttpMethod.PATCH, "/api/tickets/*/assign")
+                                .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/tickets/*")
+                                .hasAnyRole("AGENT", "ADMIN")
 
                         // All other requests require authentication.
                         .anyRequest().authenticated())

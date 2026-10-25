@@ -1,0 +1,20 @@
+import { apiClient } from './client';
+import type { LoginRequest, LoginResponse, RegisterRequest, AuthResponse } from '@/types/auth.types';
+
+/**
+ * Authenticates user credentials via POST /api/auth/login.
+ * Matches com.supportai.auth.controller.AuthController#login
+ */
+export async function loginApi(credentials: LoginRequest): Promise<LoginResponse> {
+  const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
+  return response.data;
+}
+
+/**
+ * Registers a new customer account via POST /api/auth/register.
+ * Matches com.supportai.auth.controller.AuthController#register
+ */
+export async function registerApi(data: RegisterRequest): Promise<AuthResponse> {
+  const response = await apiClient.post<AuthResponse>('/auth/register', data);
+  return response.data;
+}

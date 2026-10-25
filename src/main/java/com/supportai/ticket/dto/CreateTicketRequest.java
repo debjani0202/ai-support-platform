@@ -16,6 +16,10 @@ public record CreateTicketRequest(
         String title,
 
         @NotBlank(message = "Description is required")
+        @Size(
+                max = 10000,
+                message = "Description must not exceed 10000 characters"
+        )
         String description,
 
         TicketCategory category,

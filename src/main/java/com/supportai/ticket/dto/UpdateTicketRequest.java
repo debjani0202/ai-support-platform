@@ -17,6 +17,10 @@ public record UpdateTicketRequest(
         String title,
 
         @NotBlank(message = "Description is required")
+        @Size(
+                max = 10000,
+                message = "Description must not exceed 10000 characters"
+        )
         String description,
 
         @NotBlank(message = "Status is required")
