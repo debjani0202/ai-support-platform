@@ -274,16 +274,10 @@ public class TicketService {
 
         ticket.setTitle(request.title());
         ticket.setDescription(request.description());
-        TicketCategory category = request.category();
-
-        if (category == null) {
-            category = categoryClassifier.classify(
-                    request.title(),
-                    request.description()
-            );
+        if (request.category() != null) {
+            ticket.setCategory(request.category());
         }
 
-        ticket.setCategory(category);
         ticket.setPriority(request.priority());
 
         // Only agents and administrators can change ticket status.

@@ -220,4 +220,33 @@ class TicketControllerSecurityTest {
                                 .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void authenticatedAgentCanUpdateTicketWithNullCategory() throws Exception {
+        TicketResponse dummyResponse = new TicketResponse(
+                1L, "Updated Title", "Updated Description", "IN_PROGRESS",
+                null, TicketPriority.HIGH,
+                1L, 2L, LocalDateTime.now(), LocalDateTime.now()
+        );
+
+        when(ticketService.updateTicket(eq(1L), any(), eq(2L), eq(Role.AGENT)))
+                .thenReturn(dummyResponse);
+
+        mockMvc.perform(put("/api/tickets/1")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("2")
+                                .claim("role", "AGENT"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_AGENT")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "title": "Updated Title",
+                                    "description": "Updated Description",
+                                    "status": "IN_PROGRESS",
+                                    "priority": "HIGH",
+                                    "category": null
+                                }
+                                """))
+                .andExpect(status().isOk());
+    }
 }

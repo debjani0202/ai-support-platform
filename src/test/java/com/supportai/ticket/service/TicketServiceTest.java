@@ -667,4 +667,210 @@ void customerShouldGetOnlyTheirOwnTickets() {
     );
 }
 
+
+    @Test
+    void updateTicketShouldPreserveNullCategoryAndNotCallClassifier() {
+        // Arrange
+        Long ticketId = 101L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket(
+                "Old Title",
+                "Old Description",
+                "OPEN"
+        );
+        ticket.setCategory(null);
+        ticket.setPriority(TicketPriority.LOW);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId))
+                .thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(any(Ticket.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Updated Title",
+                "Updated Description",
+                "OPEN",
+                null,
+                TicketPriority.HIGH
+        );
+
+        // Act
+        TicketResponse response = ticketService.updateTicket(
+                ticketId,
+                request,
+                customerId,
+                Role.CUSTOMER
+        );
+
+        // Assert
+        assertEquals("Updated Title", response.title());
+        assertEquals("Updated Description", response.description());
+        assertEquals("OPEN", response.status());
+        assertNull(response.category(), "Category should remain null when request category is null");
+        assertEquals(TicketPriority.HIGH, response.priority());
+
+        verify(ticketRepository).save(ticket);
+        verifyNoInteractions(categoryClassifier);
+    }
+
+    @Test
+    void updateTicketShouldTransitionStatusWhenCategoryIsNull() {
+        // Arrange
+        Long ticketId = 102L;
+        Long agentId = 20L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        User agent = mock(User.class);
+        when(agent.getId()).thenReturn(agentId);
+
+        Ticket ticket = new Ticket(
+                "Login issue",
+                "Unable to log into account",
+                "OPEN"
+        );
+        ticket.setCategory(null);
+        ticket.setPriority(TicketPriority.HIGH);
+        ticket.setCreatedBy(customer);
+        ticket.setAssignedTo(agent);
+
+        when(ticketRepository.findById(ticketId))
+                .thenReturn(Optional.of(ticket));
+        when(userRepository.findById(agentId))
+                .thenReturn(Optional.of(agent));
+        when(ticketRepository.save(any(Ticket.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Login issue",
+                "Unable to log into account",
+                "IN_PROGRESS",
+                null,
+                TicketPriority.HIGH
+        );
+
+        // Act
+        TicketResponse response = ticketService.updateTicket(
+                ticketId,
+                request,
+                agentId,
+                Role.AGENT
+        );
+
+        // Assert
+        assertEquals("IN_PROGRESS", response.status());
+        assertNull(response.category(), "Category should remain null during status transition");
+        verify(ticketRepository).save(ticket);
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(agent),
+                eq("STATUS_CHANGED"),
+                eq("OPEN"),
+                eq("IN_PROGRESS")
+        );
+        verifyNoInteractions(categoryClassifier);
+    }
+
+    @Test
+    void updateTicketShouldPreserveExistingCategoryWhenRequestCategoryIsNull() {
+        // Arrange
+        Long ticketId = 103L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket(
+                "Payment Failure",
+                "Payment did not go through",
+                "OPEN"
+        );
+        ticket.setCategory(TicketCategory.PAYMENT);
+        ticket.setPriority(TicketPriority.MEDIUM);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId))
+                .thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(any(Ticket.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Payment Failure - Urgent",
+                "Payment did not go through on credit card",
+                "OPEN",
+                null,
+                TicketPriority.URGENT
+        );
+
+        // Act
+        TicketResponse response = ticketService.updateTicket(
+                ticketId,
+                request,
+                customerId,
+                Role.CUSTOMER
+        );
+
+        // Assert
+        assertEquals("Payment Failure - Urgent", response.title());
+        assertEquals("Payment did not go through on credit card", response.description());
+        assertEquals(TicketCategory.PAYMENT, response.category(), "Existing category must be preserved when request category is null");
+        assertEquals(TicketPriority.URGENT, response.priority());
+
+        verify(ticketRepository).save(ticket);
+        verifyNoInteractions(categoryClassifier);
+    }
+
+    @Test
+    void updateTicketShouldUpdateCategoryWhenExplicitlyProvided() {
+        // Arrange
+        Long ticketId = 104L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket(
+                "App Crash",
+                "App crashes on launch",
+                "OPEN"
+        );
+        ticket.setCategory(TicketCategory.GENERAL_QUERY);
+        ticket.setPriority(TicketPriority.LOW);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId))
+                .thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(any(Ticket.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "App Crash",
+                "App crashes on launch",
+                "OPEN",
+                TicketCategory.BUG_REPORT,
+                TicketPriority.HIGH
+        );
+
+        // Act
+        TicketResponse response = ticketService.updateTicket(
+                ticketId,
+                request,
+                customerId,
+                Role.CUSTOMER
+        );
+
+        // Assert
+        assertEquals(TicketCategory.BUG_REPORT, response.category(), "Category should be updated to explicit category provided in request");
+        assertEquals(TicketPriority.HIGH, response.priority());
+
+        verify(ticketRepository).save(ticket);
+        verifyNoInteractions(categoryClassifier);
+    }
 }

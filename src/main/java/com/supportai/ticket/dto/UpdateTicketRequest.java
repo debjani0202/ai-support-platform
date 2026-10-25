@@ -30,7 +30,6 @@ public record UpdateTicketRequest(
         )
         String status,
 
-        @NotNull(message = "Category is required")
         TicketCategory category,
 
         @NotNull(message = "Priority is required")

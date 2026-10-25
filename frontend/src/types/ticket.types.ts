@@ -18,7 +18,7 @@ export interface TicketResponse {
   title: string;
   description: string;
   status: TicketStatus;
-  category: TicketCategory;
+  category: TicketCategory | null;
   priority: TicketPriority;
   createdBy: number;
   assignedTo: number | null;
@@ -43,7 +43,7 @@ export interface UpdateTicketRequest {
   title: string;
   description: string;
   status: TicketStatus;
-  category: TicketCategory;
+  category?: TicketCategory | null;
   priority: TicketPriority;
 }
 

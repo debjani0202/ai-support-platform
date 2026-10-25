@@ -116,4 +116,46 @@ class TicketDtoValidationTest {
         Set<ConstraintViolation<UpdateTicketRequest>> violations = validator.validate(request);
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("description")));
     }
+
+    @Test
+    void updateTicketRequest_withNullCategory_hasNoViolations() {
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Valid Title",
+                "Valid Description",
+                "IN_PROGRESS",
+                null,
+                TicketPriority.HIGH
+        );
+
+        Set<ConstraintViolation<UpdateTicketRequest>> violations = validator.validate(request);
+        assertTrue(violations.isEmpty(), "UpdateTicketRequest with null category must be accepted");
+    }
+
+    @Test
+    void updateTicketRequest_withNullCategoryAndBlankTitle_isRejected() {
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "   ",
+                "Valid Description",
+                "IN_PROGRESS",
+                null,
+                TicketPriority.HIGH
+        );
+
+        Set<ConstraintViolation<UpdateTicketRequest>> violations = validator.validate(request);
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("title")));
+    }
+
+    @Test
+    void updateTicketRequest_withNullCategoryAndInvalidStatus_isRejected() {
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Valid Title",
+                "Valid Description",
+                "INVALID_STATUS",
+                null,
+                TicketPriority.HIGH
+        );
+
+        Set<ConstraintViolation<UpdateTicketRequest>> violations = validator.validate(request);
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("status")));
+    }
 }
