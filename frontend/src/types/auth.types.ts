@@ -28,7 +28,7 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
-  id: number;
+  userId: number;
   name: string;
   email: string;
   role: Role;

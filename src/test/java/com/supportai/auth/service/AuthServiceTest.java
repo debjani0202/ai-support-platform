@@ -1,7 +1,11 @@
 
 package com.supportai.auth.service;
 
+import com.supportai.auth.dto.AuthResponse;
 import com.supportai.auth.dto.ChangePasswordRequest;
+import com.supportai.auth.dto.LoginRequest;
+import com.supportai.auth.dto.LoginResponse;
+import com.supportai.auth.dto.RegisterRequest;
 import com.supportai.security.jwt.JwtService;
 import com.supportai.user.entity.Role;
 import com.supportai.user.entity.User;
@@ -160,5 +164,54 @@ class AuthServiceTest {
 
         verify(passwordEncoder, never())
                 .encode(anyString());
+    }
+
+    @Test
+    void registerShouldSaveUserAndReturnAuthResponseWithUserId() {
+        when(userRepository.existsByEmail("jane@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Password123")).thenReturn("encoded-password");
+
+        User savedMockUser = mock(User.class);
+        when(savedMockUser.getId()).thenReturn(1L);
+        when(savedMockUser.getName()).thenReturn("Jane Doe");
+        when(savedMockUser.getEmail()).thenReturn("jane@example.com");
+        when(savedMockUser.getRole()).thenReturn(Role.CUSTOMER);
+
+        when(userRepository.save(any(User.class))).thenReturn(savedMockUser);
+
+        RegisterRequest request = new RegisterRequest("Jane Doe", "jane@example.com", "Password123");
+        AuthResponse response = authService.register(request);
+
+        assertNotNull(response);
+        assertEquals(1L, response.userId());
+        assertEquals("Jane Doe", response.name());
+        assertEquals("jane@example.com", response.email());
+        assertEquals(Role.CUSTOMER, response.role());
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void loginShouldReturnLoginResponseWithUserIdAndToken() {
+        User mockUser = mock(User.class);
+        when(mockUser.getId()).thenReturn(1L);
+        when(mockUser.getName()).thenReturn("Jane Doe");
+        when(mockUser.getEmail()).thenReturn("jane@example.com");
+        when(mockUser.getPassword()).thenReturn("encoded-password");
+        when(mockUser.getRole()).thenReturn(Role.CUSTOMER);
+
+        when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(mockUser));
+        when(passwordEncoder.matches("Password123", "encoded-password")).thenReturn(true);
+        when(jwtService.generateToken(mockUser)).thenReturn("generated-jwt-token");
+
+        LoginRequest request = new LoginRequest("jane@example.com", "Password123");
+        LoginResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals(1L, response.userId());
+        assertEquals("Jane Doe", response.name());
+        assertEquals("jane@example.com", response.email());
+        assertEquals(Role.CUSTOMER, response.role());
+        assertEquals("generated-jwt-token", response.accessToken());
+        assertEquals("Bearer", response.tokenType());
     }
 }
