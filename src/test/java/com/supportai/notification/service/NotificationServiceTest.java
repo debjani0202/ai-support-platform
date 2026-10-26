@@ -245,4 +245,24 @@ class NotificationServiceTest {
 
         verify(notificationRepository).save(any(Notification.class));
     }
+
+    @Test
+    void markAllAsRead_delegatesToRepositoryWithCurrentUserId() {
+        Long currentUserId = 1L;
+        when(notificationRepository.markAllAsReadByRecipientId(currentUserId)).thenReturn(3);
+
+        notificationService.markAllAsRead(currentUserId);
+
+        verify(notificationRepository).markAllAsReadByRecipientId(currentUserId);
+    }
+
+    @Test
+    void markAllAsRead_whenNoUnreadNotifications_executesSafely() {
+        Long currentUserId = 1L;
+        when(notificationRepository.markAllAsReadByRecipientId(currentUserId)).thenReturn(0);
+
+        assertDoesNotThrow(() -> notificationService.markAllAsRead(currentUserId));
+
+        verify(notificationRepository).markAllAsReadByRecipientId(currentUserId);
+    }
 }

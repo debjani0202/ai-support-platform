@@ -86,6 +86,10 @@ public class NotificationService {
         notification.markAsRead();
     }
 
+    public void markAllAsRead(Long currentUserId) {
+        notificationRepository.markAllAsReadByRecipientId(currentUserId);
+    }
+
     private void validatePagination(int page, int size) {
         if (page < 0) {
             throw new IllegalArgumentException(

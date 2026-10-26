@@ -67,6 +67,15 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead(Authentication authentication) {
+        Long currentUserId = getCurrentUserId(authentication);
+
+        notificationService.markAllAsRead(currentUserId);
+
+        return ResponseEntity.noContent().build();
+    }
+
     private Long getCurrentUserId(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwtAuthentication) {
             return Long.valueOf(jwtAuthentication.getToken().getSubject());

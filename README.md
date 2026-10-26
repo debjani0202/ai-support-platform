@@ -96,6 +96,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `GET` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
 - `GET` `/api/tickets` | `TicketController`
 - `GET` `/api/users/agents` | `UserController`
+- `PATCH` `/api/notifications/read-all` | `NotificationController`
 - `PATCH` `/api/notifications/{id}/read` | `NotificationController`
 - `PATCH` `/api/tickets/{id}/assign` | `TicketController`
 - `POST` `/api/auth/change-password` | `AuthController`
@@ -107,7 +108,7 @@ The project focuses on secure authentication, ticket management, database persis
 
 ### Test Results
 
-**Available test report totals:** 184 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 188 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview

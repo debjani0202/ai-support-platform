@@ -4,6 +4,7 @@ import {
   getMyNotificationsApi,
   getUnreadCountApi,
   markNotificationAsReadApi,
+  markAllNotificationsAsReadApi,
 } from '@/lib/api/notifications';
 import type { NotificationResponse } from '@/types/notification.types';
 import type { PageResponse } from '@/types/api.types';
@@ -13,12 +14,14 @@ import { Button } from '@/components/ui/Button';
 import {
   Bell,
   Check,
+  CheckCheck,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
   Inbox,
   AlertCircle,
   Filter,
+  Loader2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -31,6 +34,7 @@ export function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState<boolean>(false);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -85,6 +89,51 @@ export function NotificationsPage() {
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    if (isMarkingAllAsRead || unreadCount === 0) return;
+    setIsMarkingAllAsRead(true);
+    try {
+      await markAllNotificationsAsReadApi();
+      toast.success('All notifications marked as read.');
+      setUnreadCount(0);
+      if (unreadOnly) {
+        setPage(0);
+        try {
+          const data = await getMyNotificationsApi({
+            page: 0,
+            size: 15,
+            unreadOnly: true,
+          });
+          setPageData(data);
+        } catch {
+          setPageData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  content: [],
+                  totalElements: 0,
+                  totalPages: 0,
+                }
+              : null
+          );
+        }
+      } else {
+        setPageData((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            content: prev.content.map((n) => ({ ...n, read: true })),
+          };
+        });
+      }
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      toast.error(apiErr.message || 'Failed to mark all notifications as read.');
+    } finally {
+      setIsMarkingAllAsRead(false);
+    }
+  };
+
   const handleNotificationClick = (notification: NotificationResponse) => {
     if (!notification.read) {
       markNotificationAsReadApi(notification.id)
@@ -121,37 +170,57 @@ export function NotificationsPage() {
             </p>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200/80 rounded-lg self-start sm:self-auto shadow-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setUnreadOnly(false);
-                setPage(0);
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                !unreadOnly
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              All Notifications
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setUnreadOnly(true);
-                setPage(0);
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 ${
-                unreadOnly
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Filter className="w-3 h-3" />
-              <span>Unread Only</span>
-            </button>
+          {/* Header Actions */}
+          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+            {unreadCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkAllAsRead}
+                disabled={isMarkingAllAsRead}
+                className="text-xs font-medium text-slate-700 hover:text-indigo-600 border-slate-200/80 shadow-xs"
+              >
+                {isMarkingAllAsRead ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <CheckCheck className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                )}
+                <span>{isMarkingAllAsRead ? 'Marking all read...' : 'Mark All as Read'}</span>
+              </Button>
+            )}
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200/80 rounded-lg shadow-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setUnreadOnly(false);
+                  setPage(0);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  !unreadOnly
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All Notifications
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUnreadOnly(true);
+                  setPage(0);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 ${
+                  unreadOnly
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Filter className="w-3 h-3" />
+                <span>Unread Only</span>
+              </button>
+            </div>
           </div>
         </div>
 

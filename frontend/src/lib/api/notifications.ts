@@ -43,3 +43,11 @@ export async function getUnreadCountApi(): Promise<UnreadCountResponse> {
 export async function markNotificationAsReadApi(id: number): Promise<void> {
   await apiClient.patch(`/notifications/${id}/read`);
 }
+
+/**
+ * Marks all notifications as read for the authenticated user.
+ * Matches PATCH /api/notifications/read-all
+ */
+export async function markAllNotificationsAsReadApi(): Promise<void> {
+  await apiClient.patch('/notifications/read-all');
+}

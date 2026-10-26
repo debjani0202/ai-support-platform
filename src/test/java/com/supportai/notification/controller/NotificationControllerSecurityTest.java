@@ -59,6 +59,12 @@ class NotificationControllerSecurityTest {
     }
 
     @Test
+    void unauthenticatedUserCannotMarkAllAsRead() throws Exception {
+        mockMvc.perform(patch("/api/notifications/read-all"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void authenticatedUserCanGetNotifications() throws Exception {
         when(notificationService.getMyNotifications(eq(1L), anyInt(), anyInt(), anyBoolean()))
                 .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
@@ -97,6 +103,18 @@ class NotificationControllerSecurityTest {
         doNothing().when(notificationService).markAsRead(eq(1L), eq(1L));
 
         mockMvc.perform(patch("/api/notifications/1/read")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void authenticatedUserCanMarkAllAsRead() throws Exception {
+        doNothing().when(notificationService).markAllAsRead(eq(1L));
+
+        mockMvc.perform(patch("/api/notifications/read-all")
                         .with(jwt().jwt(jwt -> jwt
                                 .subject("1")
                                 .claim("role", "CUSTOMER"))
