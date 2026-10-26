@@ -261,8 +261,13 @@ public class TicketService {
                 currentUserRole
         );
 
-        // Save the original status before changing the ticket.
+        // Save the original values before changing the ticket.
+
         String oldStatus = ticket.getStatus();
+        String oldTitle = ticket.getTitle();
+        String oldDescription = ticket.getDescription();
+        TicketCategory oldCategory = ticket.getCategory();
+        TicketPriority oldPriority = ticket.getPriority();
 
         // Customers may edit ticket details but cannot change status.
         if (currentUserRole == Role.CUSTOMER
@@ -289,51 +294,99 @@ public class TicketService {
 
         Ticket updatedTicket = ticketRepository.save(ticket);
 
-        // Create an audit event only if the status actually changed.
-        if (!Objects.equals(oldStatus, updatedTicket.getStatus())) {
+        boolean titleChanged = !Objects.equals(oldTitle, updatedTicket.getTitle());
+        boolean descriptionChanged = !Objects.equals(oldDescription, updatedTicket.getDescription());
+        boolean categoryChanged = !Objects.equals(oldCategory, updatedTicket.getCategory());
+        boolean priorityChanged = !Objects.equals(oldPriority, updatedTicket.getPriority());
+        boolean statusChanged = !Objects.equals(oldStatus, updatedTicket.getStatus());
+
+        if (titleChanged || descriptionChanged || categoryChanged || priorityChanged || statusChanged) {
             User actor = findUserById(currentUserId);
 
-            auditLogService.recordAction(
-                    updatedTicket,
-                    actor,
-                    "STATUS_CHANGED",
-                    oldStatus,
-                    updatedTicket.getStatus()
-            );
-            Long creatorId = updatedTicket.getCreatedBy().getId();
-
-            User assignedAgent = updatedTicket.getAssignedTo();
-            Long assignedAgentId = assignedAgent != null
-                    ? assignedAgent.getId()
-                    : null;
-
-            String notificationMessage =
-                    "Ticket #" + updatedTicket.getId()
-                            + " status changed from "
-                            + oldStatus + " to "
-                            + updatedTicket.getStatus()
-                            + ": " + updatedTicket.getTitle();
-
-            // Notify the creator unless they made the change.
-            if (!Objects.equals(creatorId, currentUserId)) {
-                notificationService.createNotification(
-                        updatedTicket.getCreatedBy(),
+            if (titleChanged) {
+                auditLogService.recordAction(
                         updatedTicket,
-                        "TICKET_UPDATED",
-                        notificationMessage
+                        actor,
+                        "TITLE_CHANGED",
+                        oldTitle,
+                        updatedTicket.getTitle()
                 );
             }
 
-            // Notify the assigned agent without duplicates.
-            if (assignedAgent != null
-                    && !Objects.equals(assignedAgentId, currentUserId)
-                    && !Objects.equals(assignedAgentId, creatorId)) {
-                notificationService.createNotification(
-                        assignedAgent,
+            if (descriptionChanged) {
+                auditLogService.recordAction(
                         updatedTicket,
-                        "TICKET_UPDATED",
-                        notificationMessage
+                        actor,
+                        "DESCRIPTION_CHANGED",
+                        oldDescription,
+                        updatedTicket.getDescription()
                 );
+            }
+
+            if (categoryChanged) {
+                auditLogService.recordAction(
+                        updatedTicket,
+                        actor,
+                        "CATEGORY_CHANGED",
+                        oldCategory != null ? oldCategory.name() : null,
+                        updatedTicket.getCategory() != null ? updatedTicket.getCategory().name() : null
+                );
+            }
+
+            if (priorityChanged) {
+                auditLogService.recordAction(
+                        updatedTicket,
+                        actor,
+                        "PRIORITY_CHANGED",
+                        oldPriority != null ? oldPriority.name() : null,
+                        updatedTicket.getPriority() != null ? updatedTicket.getPriority().name() : null
+                );
+            }
+
+            if (statusChanged) {
+                auditLogService.recordAction(
+                        updatedTicket,
+                        actor,
+                        "STATUS_CHANGED",
+                        oldStatus,
+                        updatedTicket.getStatus()
+                );
+
+                Long creatorId = updatedTicket.getCreatedBy().getId();
+
+                User assignedAgent = updatedTicket.getAssignedTo();
+                Long assignedAgentId = assignedAgent != null
+                        ? assignedAgent.getId()
+                        : null;
+
+                String notificationMessage =
+                        "Ticket #" + updatedTicket.getId()
+                                + " status changed from "
+                                + oldStatus + " to "
+                                + updatedTicket.getStatus()
+                                + ": " + updatedTicket.getTitle();
+
+                // Notify the creator unless they made the change.
+                if (!Objects.equals(creatorId, currentUserId)) {
+                    notificationService.createNotification(
+                            updatedTicket.getCreatedBy(),
+                            updatedTicket,
+                            "TICKET_UPDATED",
+                            notificationMessage
+                    );
+                }
+
+                // Notify the assigned agent without duplicates.
+                if (assignedAgent != null
+                        && !Objects.equals(assignedAgentId, currentUserId)
+                        && !Objects.equals(assignedAgentId, creatorId)) {
+                    notificationService.createNotification(
+                            assignedAgent,
+                            updatedTicket,
+                            "TICKET_UPDATED",
+                            notificationMessage
+                    );
+                }
             }
         }
 

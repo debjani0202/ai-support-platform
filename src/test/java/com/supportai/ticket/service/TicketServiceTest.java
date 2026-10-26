@@ -688,6 +688,8 @@ void customerShouldGetOnlyTheirOwnTickets() {
 
         when(ticketRepository.findById(ticketId))
                 .thenReturn(Optional.of(ticket));
+        when(userRepository.findById(customerId))
+                .thenReturn(Optional.of(customer));
         when(ticketRepository.save(any(Ticket.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -798,6 +800,8 @@ void customerShouldGetOnlyTheirOwnTickets() {
 
         when(ticketRepository.findById(ticketId))
                 .thenReturn(Optional.of(ticket));
+        when(userRepository.findById(customerId))
+                .thenReturn(Optional.of(customer));
         when(ticketRepository.save(any(Ticket.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -847,6 +851,8 @@ void customerShouldGetOnlyTheirOwnTickets() {
 
         when(ticketRepository.findById(ticketId))
                 .thenReturn(Optional.of(ticket));
+        when(userRepository.findById(customerId))
+                .thenReturn(Optional.of(customer));
         when(ticketRepository.save(any(Ticket.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -872,5 +878,265 @@ void customerShouldGetOnlyTheirOwnTickets() {
 
         verify(ticketRepository).save(ticket);
         verifyNoInteractions(categoryClassifier);
+    }
+
+    @Test
+    void updateTicket_shouldRecordTitleChangedAuditEventWhenTitleChanges() {
+        Long ticketId = 201L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket("Original Title", "Same Description", "OPEN");
+        ticket.setCategory(TicketCategory.GENERAL_QUERY);
+        ticket.setPriority(TicketPriority.MEDIUM);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(customerId)).thenReturn(Optional.of(customer));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "New Title",
+                "Same Description",
+                "OPEN",
+                TicketCategory.GENERAL_QUERY,
+                TicketPriority.MEDIUM
+        );
+
+        ticketService.updateTicket(ticketId, request, customerId, Role.CUSTOMER);
+
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(customer),
+                eq("TITLE_CHANGED"),
+                eq("Original Title"),
+                eq("New Title")
+        );
+        verify(auditLogService, never()).recordAction(any(), any(), eq("DESCRIPTION_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("CATEGORY_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("PRIORITY_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("STATUS_CHANGED"), any(), any());
+    }
+
+    @Test
+    void updateTicket_shouldRecordDescriptionChangedAuditEventWhenDescriptionChanges() {
+        Long ticketId = 202L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket("Same Title", "Original Description", "OPEN");
+        ticket.setCategory(TicketCategory.GENERAL_QUERY);
+        ticket.setPriority(TicketPriority.MEDIUM);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(customerId)).thenReturn(Optional.of(customer));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Same Title",
+                "New Description",
+                "OPEN",
+                TicketCategory.GENERAL_QUERY,
+                TicketPriority.MEDIUM
+        );
+
+        ticketService.updateTicket(ticketId, request, customerId, Role.CUSTOMER);
+
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(customer),
+                eq("DESCRIPTION_CHANGED"),
+                eq("Original Description"),
+                eq("New Description")
+        );
+        verify(auditLogService, never()).recordAction(any(), any(), eq("TITLE_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("CATEGORY_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("PRIORITY_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("STATUS_CHANGED"), any(), any());
+    }
+
+    @Test
+    void updateTicket_shouldRecordCategoryChangedAuditEventWhenCategoryChanges() {
+        Long ticketId = 203L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket("Same Title", "Same Description", "OPEN");
+        ticket.setCategory(TicketCategory.GENERAL_QUERY);
+        ticket.setPriority(TicketPriority.MEDIUM);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(customerId)).thenReturn(Optional.of(customer));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Same Title",
+                "Same Description",
+                "OPEN",
+                TicketCategory.PAYMENT,
+                TicketPriority.MEDIUM
+        );
+
+        ticketService.updateTicket(ticketId, request, customerId, Role.CUSTOMER);
+
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(customer),
+                eq("CATEGORY_CHANGED"),
+                eq("GENERAL_QUERY"),
+                eq("PAYMENT")
+        );
+        verify(auditLogService, never()).recordAction(any(), any(), eq("TITLE_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("DESCRIPTION_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("PRIORITY_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("STATUS_CHANGED"), any(), any());
+    }
+
+    @Test
+    void updateTicket_shouldRecordPriorityChangedAuditEventWhenPriorityChanges() {
+        Long ticketId = 204L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket("Same Title", "Same Description", "OPEN");
+        ticket.setCategory(TicketCategory.GENERAL_QUERY);
+        ticket.setPriority(TicketPriority.LOW);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(customerId)).thenReturn(Optional.of(customer));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Same Title",
+                "Same Description",
+                "OPEN",
+                TicketCategory.GENERAL_QUERY,
+                TicketPriority.URGENT
+        );
+
+        ticketService.updateTicket(ticketId, request, customerId, Role.CUSTOMER);
+
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(customer),
+                eq("PRIORITY_CHANGED"),
+                eq("LOW"),
+                eq("URGENT")
+        );
+        verify(auditLogService, never()).recordAction(any(), any(), eq("TITLE_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("DESCRIPTION_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("CATEGORY_CHANGED"), any(), any());
+        verify(auditLogService, never()).recordAction(any(), any(), eq("STATUS_CHANGED"), any(), any());
+    }
+
+    @Test
+    void updateTicket_withNoFieldOrStatusChanges_recordsNoAuditEvent() {
+        Long ticketId = 205L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket("Existing Title", "Existing Description", "OPEN");
+        ticket.setCategory(TicketCategory.GENERAL_QUERY);
+        ticket.setPriority(TicketPriority.MEDIUM);
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "Existing Title",
+                "Existing Description",
+                "OPEN",
+                TicketCategory.GENERAL_QUERY,
+                TicketPriority.MEDIUM
+        );
+
+        ticketService.updateTicket(ticketId, request, customerId, Role.CUSTOMER);
+
+        verify(ticketRepository).save(ticket);
+        verifyNoInteractions(auditLogService);
+        verify(userRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void updateTicket_withCombinedFieldAndStatusChanges_recordsAllAuditEvents() {
+        Long ticketId = 206L;
+        Long agentId = 30L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        User agent = mock(User.class);
+        when(agent.getId()).thenReturn(agentId);
+
+        Ticket ticket = new Ticket("Old Title", "Old Description", "OPEN");
+        ticket.setCategory(TicketCategory.GENERAL_QUERY);
+        ticket.setPriority(TicketPriority.LOW);
+        ticket.setCreatedBy(customer);
+        ticket.setAssignedTo(agent);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(agentId)).thenReturn(Optional.of(agent));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "New Title",
+                "New Description",
+                "IN_PROGRESS",
+                TicketCategory.BUG_REPORT,
+                TicketPriority.HIGH
+        );
+
+        ticketService.updateTicket(ticketId, request, agentId, Role.AGENT);
+
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(agent),
+                eq("TITLE_CHANGED"),
+                eq("Old Title"),
+                eq("New Title")
+        );
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(agent),
+                eq("DESCRIPTION_CHANGED"),
+                eq("Old Description"),
+                eq("New Description")
+        );
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(agent),
+                eq("CATEGORY_CHANGED"),
+                eq("GENERAL_QUERY"),
+                eq("BUG_REPORT")
+        );
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(agent),
+                eq("PRIORITY_CHANGED"),
+                eq("LOW"),
+                eq("HIGH")
+        );
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(agent),
+                eq("STATUS_CHANGED"),
+                eq("OPEN"),
+                eq("IN_PROGRESS")
+        );
     }
 }
