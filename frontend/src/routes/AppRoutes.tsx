@@ -1,16 +1,69 @@
+
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { LoginPage } from '@/pages/auth/LoginPage';
-import { RegisterPage } from '@/pages/auth/RegisterPage';
-import { DashboardPlaceholder } from '@/pages/dashboard/DashboardPlaceholder';
-import { TicketListPage } from '@/pages/tickets/TicketListPage';
-import { CreateTicketPage } from '@/pages/tickets/CreateTicketPage';
-import { TicketDetailPage } from '@/pages/tickets/TicketDetailPage';
-import { NotificationsPage } from '@/pages/notifications/NotificationsPage';
-import { ChangePasswordPage } from '@/pages/auth/ChangePasswordPage';
-import { ForbiddenPage } from '@/pages/error/ForbiddenPage';
-import { NotFoundPage } from '@/pages/error/NotFoundPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
+
+// Lazy-loaded pages
+const LoginPage = lazy(() =>
+  import('@/pages/auth/LoginPage').then((module) => ({
+    default: module.LoginPage,
+  })),
+);
+
+const RegisterPage = lazy(() =>
+  import('@/pages/auth/RegisterPage').then((module) => ({
+    default: module.RegisterPage,
+  })),
+);
+
+const DashboardPlaceholder = lazy(() =>
+  import('@/pages/dashboard/DashboardPlaceholder').then((module) => ({
+    default: module.DashboardPlaceholder,
+  })),
+);
+
+const TicketListPage = lazy(() =>
+  import('@/pages/tickets/TicketListPage').then((module) => ({
+    default: module.TicketListPage,
+  })),
+);
+
+const CreateTicketPage = lazy(() =>
+  import('@/pages/tickets/CreateTicketPage').then((module) => ({
+    default: module.CreateTicketPage,
+  })),
+);
+
+const TicketDetailPage = lazy(() =>
+  import('@/pages/tickets/TicketDetailPage').then((module) => ({
+    default: module.TicketDetailPage,
+  })),
+);
+
+const NotificationsPage = lazy(() =>
+  import('@/pages/notifications/NotificationsPage').then((module) => ({
+    default: module.NotificationsPage,
+  })),
+);
+
+const ChangePasswordPage = lazy(() =>
+  import('@/pages/auth/ChangePasswordPage').then((module) => ({
+    default: module.ChangePasswordPage,
+  })),
+);
+
+const ForbiddenPage = lazy(() =>
+  import('@/pages/error/ForbiddenPage').then((module) => ({
+    default: module.ForbiddenPage,
+  })),
+);
+
+const NotFoundPage = lazy(() =>
+  import('@/pages/error/NotFoundPage').then((module) => ({
+    default: module.NotFoundPage,
+  })),
+);
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isInitializing } = useAuth();
@@ -28,41 +81,53 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 export function AppRoutes() {
   return (
-    <Routes>
-      {/* Root redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"
+            role="status"
+            aria-label="Loading page"
+          />
+        </div>
+      }
+    >
+      <Routes>
+        {/* Root redirect */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* Public Guest Routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        }
-      />
+        {/* Public Guest Routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          }
+        />
 
-      {/* Protected Routes */}
-      <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardPlaceholder />} />
-        <Route path="/tickets" element={<TicketListPage />} />
-        <Route path="/tickets/new" element={<CreateTicketPage />} />
-        <Route path="/tickets/:id" element={<TicketDetailPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/change-password" element={<ChangePasswordPage />} />
-      </Route>
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardPlaceholder />} />
+          <Route path="/tickets" element={<TicketListPage />} />
+          <Route path="/tickets/new" element={<CreateTicketPage />} />
+          <Route path="/tickets/:id" element={<TicketDetailPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
+        </Route>
 
-      {/* Error Routes */}
-      <Route path="/403" element={<ForbiddenPage />} />
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        {/* Error Routes */}
+        <Route path="/403" element={<ForbiddenPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
   );
 }
