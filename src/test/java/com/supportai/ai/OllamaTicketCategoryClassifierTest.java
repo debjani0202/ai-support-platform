@@ -10,8 +10,14 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -222,5 +228,176 @@ class OllamaTicketCategoryClassifierTest {
                 "Do not choose PAYMENT merely because a ticket mentions an invoice, bill, or amount."));
         assertTrue(prompt.contains(
                 "choose TECHNICAL_ISSUE unless a specific software defect is described."));
+    }
+
+    @Test
+    void invalidConfigurationValuesThrowIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 0, 10000, 2, objectMapper));
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", -1, 10000, 2, objectMapper));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 0, 2, objectMapper));
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, -1, 2, objectMapper));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 10000, 0, objectMapper));
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 10000, -1, objectMapper));
+    }
+
+    @Test
+    void configuredTimeoutAndConcurrencyApplied() {
+        OllamaTicketCategoryClassifier classifier = new OllamaTicketCategoryClassifier(
+                "http://localhost:11434",
+                "qwen3:4b",
+                2500,
+                8000,
+                3,
+                objectMapper
+        );
+
+        assertEquals(Duration.ofMillis(8000), classifier.getRequestTimeout());
+        assertEquals(3, classifier.getAvailablePermits());
+    }
+
+    @Test
+    void successfulClassificationReleasesConcurrencyPermit()
+            throws IOException, InterruptedException {
+        HttpClient httpClient = mockHttpClient(
+                chatResponse("{\"category\":\"BUG_REPORT\"}"), 200);
+
+        OllamaTicketCategoryClassifier classifier = createClassifier(httpClient);
+        assertEquals(2, classifier.getAvailablePermits());
+
+        TicketCategory result = classifier.classify("Crash", "App crashes on launch.");
+
+        assertEquals(TicketCategory.BUG_REPORT, result);
+        assertEquals(2, classifier.getAvailablePermits());
+    }
+
+    @Test
+    void timedOutRequestReleasesPermitAndThrowsIllegalStateException()
+            throws IOException, InterruptedException {
+        HttpClient httpClient = mock(HttpClient.class);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenThrow(new HttpTimeoutException("Request timed out"));
+
+        OllamaTicketCategoryClassifier classifier = createClassifier(httpClient);
+        assertEquals(2, classifier.getAvailablePermits());
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> classifier.classify("Slow response", "Timeout expected.")
+        );
+
+        assertEquals("Could not communicate with Ollama", ex.getMessage());
+        assertTrue(ex.getCause() instanceof HttpTimeoutException);
+        assertEquals(2, classifier.getAvailablePermits());
+    }
+
+    @Test
+    void failedRequestReleasesPermit()
+            throws IOException, InterruptedException {
+        HttpClient httpClient = mockHttpClient("{\"error\":\"internal error\"}", 500);
+
+        OllamaTicketCategoryClassifier classifier = createClassifier(httpClient);
+        assertEquals(2, classifier.getAvailablePermits());
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> classifier.classify("Error", "Error expected.")
+        );
+
+        assertEquals(2, classifier.getAvailablePermits());
+    }
+
+    @Test
+    void concurrentRequestsBeyondLimitFailFast() throws Exception {
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch releaseRequest = new CountDownLatch(1);
+
+        HttpClient httpClient = mock(HttpClient.class);
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(chatResponse("{\"category\":\"PAYMENT\"}"));
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> {
+                    requestStarted.countDown();
+                    releaseRequest.await(5, TimeUnit.SECONDS);
+                    return response;
+                });
+
+        OllamaTicketCategoryClassifier classifier = new OllamaTicketCategoryClassifier(
+                "http://localhost:11434",
+                "qwen3:4b",
+                Duration.ofMillis(5000),
+                new Semaphore(1),
+                objectMapper,
+                httpClient
+        );
+
+        AtomicReference<TicketCategory> threadResult = new AtomicReference<>();
+        AtomicReference<Throwable> threadError = new AtomicReference<>();
+
+        Thread inFlightThread = new Thread(() -> {
+            try {
+                threadResult.set(classifier.classify("Invoice issue", "Payment failed."));
+            } catch (Throwable t) {
+                threadError.set(t);
+            }
+        });
+        inFlightThread.start();
+
+        assertTrue(requestStarted.await(5, TimeUnit.SECONDS));
+        assertEquals(0, classifier.getAvailablePermits());
+
+        // A second concurrent request must fail fast immediately
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> classifier.classify("Second ticket", "Should fail fast.")
+        );
+        assertEquals("Ollama classification capacity reached", ex.getMessage());
+
+        // Unblock first request
+        releaseRequest.countDown();
+        inFlightThread.join(5000);
+
+        assertEquals(TicketCategory.PAYMENT, threadResult.get());
+        assertEquals(1, classifier.getAvailablePermits());
+    }
+
+    @Test
+    void requestTimeoutIsAppliedToHttpRequest() throws Exception {
+        AtomicReference<HttpRequest> capturedRequest = new AtomicReference<>();
+
+        HttpClient httpClient = mock(HttpClient.class);
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(chatResponse("{\"category\":\"BUG_REPORT\"}"));
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> {
+                    capturedRequest.set(invocation.getArgument(0));
+                    return response;
+                });
+
+        OllamaTicketCategoryClassifier classifier = new OllamaTicketCategoryClassifier(
+                "http://localhost:11434",
+                "qwen3:4b",
+                Duration.ofMillis(7500),
+                new Semaphore(2),
+                objectMapper,
+                httpClient
+        );
+
+        classifier.classify("Title", "Description");
+
+        assertNotNull(capturedRequest.get());
+        assertTrue(capturedRequest.get().timeout().isPresent());
+        assertEquals(Duration.ofMillis(7500), capturedRequest.get().timeout().get());
     }
 }

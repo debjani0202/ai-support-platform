@@ -27,6 +27,8 @@ import com.supportai.user.entity.User;
 import com.supportai.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.Optional;
 
@@ -172,6 +174,90 @@ class TicketServiceTest {
         assertEquals(TicketCategory.ACCOUNT_ACCESS, response.category());
         verifyNoInteractions(categoryClassifier);
     }
+
+    @Test
+    void createTicketShouldCreateTicketWithNullCategoryWhenClassificationReturnsNull() {
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+        when(userRepository.findById(customerId))
+                .thenReturn(Optional.of(customer));
+
+        when(categoryClassifier.classify(
+                anyString(), anyString()))
+                .thenReturn(null);
+
+        when(ticketRepository.save(any(Ticket.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateTicketRequest request = new CreateTicketRequest(
+                "Custom query",
+                "Some unique question not matching rules.",
+                null,
+                TicketPriority.LOW
+        );
+
+        TicketResponse response =
+                ticketService.createTicket(request, customerId);
+
+        assertNull(response.category());
+
+        verify(categoryClassifier).classify(
+                "Custom query",
+                "Some unique question not matching rules."
+        );
+        verify(ticketRepository).save(any(Ticket.class));
+        verify(auditLogService).recordAction(
+                any(Ticket.class),
+                eq(customer),
+                eq("CREATED"),
+                isNull(),
+                eq("Ticket created: Custom query")
+        );
+    }
+
+    @Test
+    void createTicketShouldExecuteClassificationBeforeTransactionOperations() {
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+        when(userRepository.findById(customerId)).thenReturn(Optional.of(customer));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(categoryClassifier.classify(anyString(), anyString())).thenReturn(TicketCategory.GENERAL_QUERY);
+
+        TransactionOperations mockTxOps = mock(TransactionOperations.class);
+        when(mockTxOps.execute(any())).thenAnswer(invocation -> {
+            org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(mock(org.springframework.transaction.TransactionStatus.class));
+        });
+
+        TicketService serviceWithMockTx = new TicketService(
+                ticketRepository,
+                userRepository,
+                auditLogService,
+                notificationService,
+                categoryClassifier,
+                mockTxOps
+        );
+
+        CreateTicketRequest request = new CreateTicketRequest(
+                "General question",
+                "Need help.",
+                null,
+                TicketPriority.MEDIUM
+        );
+
+        TicketResponse response = serviceWithMockTx.createTicket(request, customerId);
+
+        assertEquals(TicketCategory.GENERAL_QUERY, response.category());
+
+        InOrder inOrder = inOrder(categoryClassifier, mockTxOps);
+        inOrder.verify(categoryClassifier).classify("General question", "Need help.");
+        inOrder.verify(mockTxOps).execute(any());
+    }
+
     @Test
     void createTicketShouldFailWhenCustomerDoesNotExist() {
         // Arrange

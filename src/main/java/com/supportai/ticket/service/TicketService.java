@@ -20,13 +20,16 @@ import com.supportai.user.entity.Role;
 import com.supportai.user.entity.User;
 import com.supportai.user.repository.UserRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.Objects;
 import java.util.Set;
@@ -46,9 +49,10 @@ public class TicketService {
     private final TicketAuditLogService auditLogService;
     private final NotificationService notificationService;
     private final TicketCategoryClassifier categoryClassifier;
+    private final TransactionOperations transactionOperations;
 
     /**
-     * Constructor injection lets Spring provide all required dependencies.
+     * Constructor for backward compatibility and testing without a custom transaction manager.
      */
     public TicketService(
             TicketRepository ticketRepository,
@@ -57,25 +61,50 @@ public class TicketService {
             NotificationService notificationService,
             TicketCategoryClassifier categoryClassifier
     ) {
+        this(
+                ticketRepository,
+                userRepository,
+                auditLogService,
+                notificationService,
+                categoryClassifier,
+                TransactionOperations.withoutTransaction()
+        );
+    }
+
+    /**
+     * Primary constructor with transaction operations injection.
+     */
+    @Autowired
+    public TicketService(
+            TicketRepository ticketRepository,
+            UserRepository userRepository,
+            TicketAuditLogService auditLogService,
+            NotificationService notificationService,
+            TicketCategoryClassifier categoryClassifier,
+            TransactionOperations transactionOperations
+    ) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
         this.notificationService = notificationService;
         this.categoryClassifier = categoryClassifier;
+        this.transactionOperations = transactionOperations != null
+                ? transactionOperations
+                : TransactionOperations.withoutTransaction();
     }
 
     /**
      * Creates a ticket and records a CREATED audit event.
+     *
+     * Classification is executed outside the database transaction so that external
+     * Ollama HTTP calls do not hold a database connection open. The subsequent database
+     * operations participate in an atomic transaction managed by TransactionOperations.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public TicketResponse createTicket(
             CreateTicketRequest request,
             Long currentUserId
     ) {
-        User currentUser = findUserById(currentUserId);
-
-        Ticket ticket = new Ticket();
-        ticket.setTitle(request.title());
-        ticket.setDescription(request.description());
         TicketCategory category = request.category();
 
         if (category == null) {
@@ -85,22 +114,31 @@ public class TicketService {
             );
         }
 
-        ticket.setCategory(category);
-        ticket.setPriority(request.priority());
-        ticket.setCreatedBy(currentUser);
+        final TicketCategory resolvedCategory = category;
 
-        Ticket savedTicket = ticketRepository.save(ticket);
+        return transactionOperations.execute(status -> {
+            User currentUser = findUserById(currentUserId);
 
-        // Record who created the ticket and what was created.
-        auditLogService.recordAction(
-                savedTicket,
-                currentUser,
-                "CREATED",
-                null,
-                "Ticket created: " + savedTicket.getTitle()
-        );
+            Ticket ticket = new Ticket();
+            ticket.setTitle(request.title());
+            ticket.setDescription(request.description());
+            ticket.setCategory(resolvedCategory);
+            ticket.setPriority(request.priority());
+            ticket.setCreatedBy(currentUser);
 
-        return mapToResponse(savedTicket);
+            Ticket savedTicket = ticketRepository.save(ticket);
+
+            // Record who created the ticket and what was created.
+            auditLogService.recordAction(
+                    savedTicket,
+                    currentUser,
+                    "CREATED",
+                    null,
+                    "Ticket created: " + savedTicket.getTitle()
+            );
+
+            return mapToResponse(savedTicket);
+        });
     }
 
     /**

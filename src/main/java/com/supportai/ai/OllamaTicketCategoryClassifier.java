@@ -17,6 +17,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Locale;
+import java.util.concurrent.Semaphore;
 
 @Component
 public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier {
@@ -25,6 +26,8 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
 
     private final String baseUrl;
     private final String model;
+    private final Duration requestTimeout;
+    private final Semaphore concurrencyLimiter;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
@@ -33,35 +36,92 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
     public OllamaTicketCategoryClassifier(
             @Value("${app.ai.ollama.base-url}") String baseUrl,
             @Value("${app.ai.ollama.model}") String model,
+            @Value("${app.ai.ollama.connect-timeout-ms}") long connectTimeoutMs,
+            @Value("${app.ai.ollama.request-timeout-ms}") long requestTimeoutMs,
+            @Value("${app.ai.ollama.max-concurrent-requests:2}") int maxConcurrentRequests,
             ObjectMapper objectMapper) {
 
-        this(
-                baseUrl,
-                model,
-                objectMapper,
-                HttpClient.newBuilder()
-                        .connectTimeout(Duration.ofSeconds(5))
-                        .build()
-        );
+        if (connectTimeoutMs <= 0) {
+            throw new IllegalArgumentException(
+                    "Ollama connect timeout must be positive, got: " + connectTimeoutMs);
+        }
+        if (requestTimeoutMs <= 0) {
+            throw new IllegalArgumentException(
+                    "Ollama request timeout must be positive, got: " + requestTimeoutMs);
+        }
+        if (maxConcurrentRequests <= 0) {
+            throw new IllegalArgumentException(
+                    "Ollama max concurrent requests must be positive, got: " + maxConcurrentRequests);
+        }
+
+        this.baseUrl = baseUrl;
+        this.model = model;
+        this.requestTimeout = Duration.ofMillis(requestTimeoutMs);
+        this.concurrencyLimiter = new Semaphore(maxConcurrentRequests);
+        this.objectMapper = objectMapper;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .build();
     }
 
-    // Constructor for unit tests to provide a custom HTTP client.
+    // Constructor for unit tests to provide a custom HTTP client and default test timeouts/concurrency.
     OllamaTicketCategoryClassifier(
             String baseUrl,
             String model,
             ObjectMapper objectMapper,
             HttpClient httpClient) {
 
+        this(
+                baseUrl,
+                model,
+                Duration.ofMillis(10000),
+                new Semaphore(2),
+                objectMapper,
+                httpClient
+        );
+    }
+
+    // Constructor for unit tests to configure timeout, concurrency limiter, and custom HTTP client.
+    OllamaTicketCategoryClassifier(
+            String baseUrl,
+            String model,
+            Duration requestTimeout,
+            Semaphore concurrencyLimiter,
+            ObjectMapper objectMapper,
+            HttpClient httpClient) {
+
+        if (requestTimeout == null || requestTimeout.isNegative() || requestTimeout.isZero()) {
+            throw new IllegalArgumentException("Ollama request timeout must be positive");
+        }
+        if (concurrencyLimiter == null) {
+            throw new IllegalArgumentException("Concurrency limiter must not be null");
+        }
+
         this.baseUrl = baseUrl;
         this.model = model;
+        this.requestTimeout = requestTimeout;
+        this.concurrencyLimiter = concurrencyLimiter;
         this.objectMapper = objectMapper;
         this.httpClient = httpClient;
     }
 
+    Duration getRequestTimeout() {
+        return requestTimeout;
+    }
+
+    int getAvailablePermits() {
+        return concurrencyLimiter.availablePermits();
+    }
+
     @Override
     public TicketCategory classify(String title, String description) {
-        log.info("Ollama classification requested using model: {}", model);
+        if (!concurrencyLimiter.tryAcquire()) {
+            log.warn("Ollama classification capacity reached; failing fast");
+            throw new IllegalStateException("Ollama classification capacity reached");
+        }
+
         try {
+            log.info("Ollama classification requested using model: {}", model);
             String prompt = """
                     You classify customer support tickets. Choose exactly one category based on the main problem described.
 
@@ -139,7 +199,7 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(
                             baseUrl.replaceAll("/+$", "") + "/api/chat"))
-                    .timeout(Duration.ofSeconds(90))
+                    .timeout(requestTimeout)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestJson))
                     .build();
@@ -188,6 +248,8 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
         } catch (IllegalArgumentException exception) {
             throw new IllegalStateException(
                     "Invalid Ollama URL or response format", exception);
+        } finally {
+            concurrencyLimiter.release();
         }
     }
 }

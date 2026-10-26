@@ -108,4 +108,53 @@ class HybridTicketCategoryClassifierTest {
                 "What are your support hours?"
         );
     }
+
+    @Test
+    void shouldReturnNullWhenOllamaTimesOut() {
+        when(ruleBasedClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        )).thenReturn(null);
+
+        when(ollamaClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        )).thenThrow(new IllegalStateException("Could not communicate with Ollama",
+                new java.net.http.HttpTimeoutException("Request timed out")));
+
+        TicketCategory result = hybridClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        );
+
+        assertNull(result);
+        verify(ollamaClassifier).classify(
+                "Question about support",
+                "What are your support hours?"
+        );
+    }
+
+    @Test
+    void shouldReturnNullWhenOllamaCapacityExceeded() {
+        when(ruleBasedClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        )).thenReturn(null);
+
+        when(ollamaClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        )).thenThrow(new IllegalStateException("Ollama classification capacity reached"));
+
+        TicketCategory result = hybridClassifier.classify(
+                "Question about support",
+                "What are your support hours?"
+        );
+
+        assertNull(result);
+        verify(ollamaClassifier).classify(
+                "Question about support",
+                "What are your support hours?"
+        );
+    }
 }
