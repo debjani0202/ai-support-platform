@@ -2,6 +2,7 @@ package com.supportai.security;
 
 import com.supportai.auth.controller.AuthController;
 import com.supportai.auth.service.AuthService;
+import com.supportai.auth.service.PasswordResetService;
 import com.supportai.exception.GlobalExceptionHandler;
 import com.supportai.ticket.controller.TicketController;
 import com.supportai.ticket.dto.PageResponse;
@@ -43,6 +44,9 @@ class CorsSecurityTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -87,6 +91,18 @@ class CorsSecurityTest {
                                 .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+    }
+
+    @Test
+    void allowedOrigin5176PreflightSucceeds() throws Exception {
+        mockMvc.perform(options("/api/auth/login")
+                        .header("Origin", "http://localhost:5176")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Content-Type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5176"))
+                .andExpect(header().string("Access-Control-Allow-Methods", containsString("POST")))
+                .andExpect(header().string("Access-Control-Allow-Headers", containsString("Content-Type")));
     }
 
     @Test

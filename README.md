@@ -24,10 +24,19 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/auth/controller/AuthController.java`
 - `src/main/java/com/supportai/auth/dto/AuthResponse.java`
 - `src/main/java/com/supportai/auth/dto/ChangePasswordRequest.java`
+- `src/main/java/com/supportai/auth/dto/ForgotPasswordRequest.java`
+- `src/main/java/com/supportai/auth/dto/ForgotPasswordResponse.java`
 - `src/main/java/com/supportai/auth/dto/LoginRequest.java`
 - `src/main/java/com/supportai/auth/dto/LoginResponse.java`
 - `src/main/java/com/supportai/auth/dto/RegisterRequest.java`
+- `src/main/java/com/supportai/auth/dto/ResetPasswordRequest.java`
+- `src/main/java/com/supportai/auth/dto/VerifyResetTokenResponse.java`
+- `src/main/java/com/supportai/auth/entity/PasswordResetToken.java`
+- `src/main/java/com/supportai/auth/repository/PasswordResetTokenRepository.java`
 - `src/main/java/com/supportai/auth/service/AuthService.java`
+- `src/main/java/com/supportai/auth/service/PasswordResetService.java`
+- `src/main/java/com/supportai/common/email/ConsoleEmailService.java`
+- `src/main/java/com/supportai/common/email/EmailService.java`
 - `src/main/java/com/supportai/config/PasswordConfig.java`
 - `src/main/java/com/supportai/exception/ForbiddenException.java`
 - `src/main/java/com/supportai/exception/GlobalExceptionHandler.java`
@@ -88,6 +97,7 @@ The project focuses on secure authentication, ticket management, database persis
 ### Discovered API Endpoints
 
 - `DELETE` `/api/tickets/{id}` | `TicketController`
+- `GET` `/api/auth/verify-reset-token` | `AuthController`
 - `GET` `/api/health` | `HealthController`
 - `GET` `/api/notifications/unread-count` | `NotificationController`
 - `GET` `/api/notifications` | `NotificationController`
@@ -100,15 +110,17 @@ The project focuses on secure authentication, ticket management, database persis
 - `PATCH` `/api/notifications/{id}/read` | `NotificationController`
 - `PATCH` `/api/tickets/{id}/assign` | `TicketController`
 - `POST` `/api/auth/change-password` | `AuthController`
+- `POST` `/api/auth/forgot-password` | `AuthController`
 - `POST` `/api/auth/login` | `AuthController`
 - `POST` `/api/auth/register` | `AuthController`
+- `POST` `/api/auth/reset-password` | `AuthController`
 - `POST` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
 - `POST` `/api/tickets` | `TicketController`
 - `PUT` `/api/tickets/{id}` | `TicketController`
 
 ### Test Results
 
-**Available test report totals:** 188 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 207 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview

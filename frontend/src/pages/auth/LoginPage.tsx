@@ -98,6 +98,15 @@ export function LoginPage() {
           error={errors.password?.message}
         />
 
+        <div className="flex items-center justify-end -mt-2">
+          <Link
+            to="/forgot-password"
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
+
         <Button type="submit" fullWidth isLoading={isSubmitting}>
           Sign In
         </Button>
