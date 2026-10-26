@@ -7,6 +7,7 @@ import { TicketListPage } from '@/pages/tickets/TicketListPage';
 import { CreateTicketPage } from '@/pages/tickets/CreateTicketPage';
 import { TicketDetailPage } from '@/pages/tickets/TicketDetailPage';
 import { NotificationsPage } from '@/pages/notifications/NotificationsPage';
+import { ChangePasswordPage } from '@/pages/auth/ChangePasswordPage';
 import { ForbiddenPage } from '@/pages/error/ForbiddenPage';
 import { NotFoundPage } from '@/pages/error/NotFoundPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
@@ -56,6 +57,7 @@ export function AppRoutes() {
         <Route path="/tickets/new" element={<CreateTicketPage />} />
         <Route path="/tickets/:id" element={<TicketDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
       </Route>
 
       {/* Error Routes */}

@@ -8,6 +8,7 @@ import {
   LogOut,
   Shield,
   Bell,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -71,6 +72,10 @@ export function AppNavbar() {
             <NavLink to="/notifications" className={navLinkClass}>
               <Bell className="w-4 h-4" />
               <span>Notifications</span>
+            </NavLink>
+            <NavLink to="/change-password" className={navLinkClass}>
+              <KeyRound className="w-4 h-4" />
+              <span>Change Password</span>
             </NavLink>
           </nav>
         </div>
