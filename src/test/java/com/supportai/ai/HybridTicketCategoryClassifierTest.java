@@ -86,6 +86,46 @@ class HybridTicketCategoryClassifierTest {
     }
 
     @Test
+    void shouldClassifyTechnicalIssueWithoutCallingOllama() {
+        RuleBasedTicketCategoryClassifier realRuleBasedClassifier =
+                new RuleBasedTicketCategoryClassifier();
+
+        HybridTicketCategoryClassifier classifier =
+                new HybridTicketCategoryClassifier(
+                        realRuleBasedClassifier,
+                        ollamaClassifier
+                );
+
+        TicketCategory result = classifier.classify(
+                "Slow dashboard",
+                "The dashboard takes 40 seconds to load."
+        );
+
+        assertEquals(TicketCategory.TECHNICAL_ISSUE, result);
+        verifyNoInteractions(ollamaClassifier);
+    }
+
+    @Test
+    void shouldClassifyGeneralQueryWithoutCallingOllama() {
+        RuleBasedTicketCategoryClassifier realRuleBasedClassifier =
+                new RuleBasedTicketCategoryClassifier();
+
+        HybridTicketCategoryClassifier classifier =
+                new HybridTicketCategoryClassifier(
+                        realRuleBasedClassifier,
+                        ollamaClassifier
+                );
+
+        TicketCategory result = classifier.classify(
+                "Monthly report",
+                "How can I download my monthly report?"
+        );
+
+        assertEquals(TicketCategory.GENERAL_QUERY, result);
+        verifyNoInteractions(ollamaClassifier);
+    }
+
+    @Test
     void shouldReturnNullWhenOllamaFails() {
         when(ruleBasedClassifier.classify(
                 "Question about support",
