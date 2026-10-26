@@ -2,7 +2,7 @@ package com.supportai.notification.controller;
 
 import com.supportai.notification.dto.NotificationResponse;
 import com.supportai.notification.service.NotificationService;
-import org.springframework.data.domain.Page;
+import com.supportai.ticket.dto.PageResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -26,7 +26,7 @@ public class NotificationController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<NotificationResponse>> getMyNotifications(
+    public ResponseEntity<PageResponse<NotificationResponse>> getMyNotifications(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,

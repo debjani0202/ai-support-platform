@@ -13,8 +13,8 @@ export interface PageResponse<T> {
 }
 
 /**
- * Standard Spring Data Page serialization returned by NotificationController.
- * Matches org.springframework.data.domain.Page<T>
+ * @deprecated Legacy Spring Data Page serialization format.
+ * All paginated endpoints now return PageResponse<T>.
  */
 export interface SpringPage<T> {
   content: T[];

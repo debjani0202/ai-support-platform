@@ -6,7 +6,7 @@ import {
   markNotificationAsReadApi,
 } from '@/lib/api/notifications';
 import type { NotificationResponse } from '@/types/notification.types';
-import type { SpringPage } from '@/types/api.types';
+import type { PageResponse } from '@/types/api.types';
 import { AppNavbar } from '@/components/layout/AppNavbar';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 
 export function NotificationsPage() {
   const navigate = useNavigate();
-  const [pageData, setPageData] = useState<SpringPage<NotificationResponse> | null>(null);
+  const [pageData, setPageData] = useState<PageResponse<NotificationResponse> | null>(null);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [page, setPage] = useState<number>(0);
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
@@ -297,7 +297,7 @@ export function NotificationsPage() {
         {pageData && pageData.totalPages > 1 && (
           <div className="flex items-center justify-between text-xs text-slate-500 px-1">
             <span>
-              Page {pageData.number + 1} of {pageData.totalPages} ({pageData.totalElements} total notifications)
+              Page {pageData.page + 1} of {pageData.totalPages} ({pageData.totalElements} total notifications)
             </span>
 
             <div className="flex items-center gap-2">

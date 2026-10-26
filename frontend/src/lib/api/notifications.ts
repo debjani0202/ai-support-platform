@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { SpringPage } from '@/types/api.types';
+import type { PageResponse } from '@/types/api.types';
 import type {
   NotificationResponse,
   UnreadCountResponse,
@@ -12,13 +12,13 @@ import type {
  */
 export async function getMyNotificationsApi(
   params: NotificationQueryParams = {}
-): Promise<SpringPage<NotificationResponse>> {
+): Promise<PageResponse<NotificationResponse>> {
   const cleanParams: Record<string, unknown> = {};
   if (params.page !== undefined) cleanParams.page = params.page;
   if (params.size !== undefined) cleanParams.size = params.size;
   if (params.unreadOnly !== undefined) cleanParams.unreadOnly = params.unreadOnly;
 
-  const response = await apiClient.get<SpringPage<NotificationResponse>>(
+  const response = await apiClient.get<PageResponse<NotificationResponse>>(
     '/notifications',
     { params: cleanParams }
   );

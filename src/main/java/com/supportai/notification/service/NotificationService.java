@@ -4,6 +4,7 @@ import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.notification.dto.NotificationResponse;
 import com.supportai.notification.entity.Notification;
 import com.supportai.notification.repository.NotificationRepository;
+import com.supportai.ticket.dto.PageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -23,7 +24,7 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> getMyNotifications(
+    public PageResponse<NotificationResponse> getMyNotifications(
             Long currentUserId,
             int page,
             int size,
@@ -49,7 +50,18 @@ public class NotificationService {
                                 pageable
                         );
 
-        return notifications.map(this::toResponse);
+        return new PageResponse<>(
+                notifications.getContent()
+                        .stream()
+                        .map(this::toResponse)
+                        .toList(),
+                notifications.getNumber(),
+                notifications.getSize(),
+                notifications.getTotalElements(),
+                notifications.getTotalPages(),
+                notifications.isFirst(),
+                notifications.isLast()
+        );
     }
 
     @Transactional(readOnly = true)

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageImpl;
+import com.supportai.ticket.dto.PageResponse;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(NotificationController.class)
@@ -60,14 +61,23 @@ class NotificationControllerSecurityTest {
     @Test
     void authenticatedUserCanGetNotifications() throws Exception {
         when(notificationService.getMyNotifications(eq(1L), anyInt(), anyInt(), anyBoolean()))
-                .thenReturn(new PageImpl<>(List.of()));
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
 
         mockMvc.perform(get("/api/notifications")
                         .with(jwt().jwt(jwt -> jwt
                                 .subject("1")
                                 .claim("role", "CUSTOMER"))
                                 .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(true))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.pageable").doesNotExist())
+                .andExpect(jsonPath("$.numberOfElements").doesNotExist());
     }
 
     @Test
