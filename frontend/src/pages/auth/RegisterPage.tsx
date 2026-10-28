@@ -118,7 +118,12 @@ export function RegisterPage() {
           * Public registration creates standard customer accounts.
         </p>
 
-        <Button type="submit" fullWidth isLoading={isSubmitting}>
+        <Button
+          type="submit"
+          fullWidth
+          isLoading={isSubmitting}
+          className="h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md shadow-blue-500/25 transition-all"
+        >
           Create Account
         </Button>
 
@@ -126,7 +131,7 @@ export function RegisterPage() {
           Already have an account?{' '}
           <Link
             to="/login"
-            className="font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+            className="font-medium text-blue-600 hover:text-blue-500 hover:underline"
           >
             Sign in
           </Link>

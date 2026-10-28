@@ -1,15 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  ShieldCheck,
   PlusCircle,
   LayoutDashboard,
   Ticket as TicketIcon,
   LogOut,
-  Shield,
   Bell,
   KeyRound,
 } from 'lucide-react';
+import { BrandLogo } from '@/components/common/BrandLogo';
 import { Button } from '@/components/ui/Button';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { toast } from 'sonner';
@@ -27,7 +26,7 @@ export function AppNavbar() {
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
       isActive
-        ? 'bg-indigo-50 text-indigo-700 font-semibold'
+        ? 'bg-blue-50 text-blue-700 font-semibold'
         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
     }`;
 
@@ -38,20 +37,18 @@ export function AppNavbar() {
       case 'AGENT':
         return 'bg-blue-50 text-blue-700 border-blue-200/80';
       default:
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200/80';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-300';
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-15 flex items-center justify-between">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white/95 backdrop-blur-xs">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         {/* Brand & Left Navigation */}
         <div className="flex items-center gap-6">
           <NavLink to="/dashboard" className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100/60 shadow-xs">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-slate-900 tracking-tight text-sm hidden sm:inline">
+            <BrandLogo size={24} />
+            <span className="font-bold text-slate-900 tracking-tight text-sm">
               AI Support Platform
             </span>
           </NavLink>
@@ -88,11 +85,11 @@ export function AppNavbar() {
               {user?.name}
             </span>
             <span
-              className={`inline-flex items-center gap-1 mt-0.5 px-2 py-0.2 rounded-full text-[10px] font-semibold border ${getRoleBadgeStyle(
+              className={`inline-flex items-center gap-1 mt-0.5 px-2 py-0.2 rounded-full text-[9px] font-semibold border ${getRoleBadgeStyle(
                 user?.role
               )}`}
             >
-              <Shield className="w-2.5 h-2.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               {user?.role}
             </span>
           </div>

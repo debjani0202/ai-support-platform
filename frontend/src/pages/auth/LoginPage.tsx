@@ -47,7 +47,6 @@ export function LoginPage() {
         errors?: Record<string, string>;
       };
 
-      // Map backend validation field errors if provided
       if (apiErr.errors) {
         Object.entries(apiErr.errors).forEach(([field, msg]) => {
           if (field === 'email' || field === 'password') {
@@ -56,7 +55,6 @@ export function LoginPage() {
         });
       }
 
-      // Display backend business message or general invalid credentials message
       if (apiErr.status === 401) {
         setGeneralError('Invalid email or password.');
       } else if (apiErr.message) {
@@ -72,50 +70,58 @@ export function LoginPage() {
       title="Sign in to your account"
       subtitle="AI Support Ticket Management Platform"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         {generalError && (
-          <div className="rounded-lg bg-rose-50 border border-rose-200/80 p-3.5 flex items-start gap-2.5 text-rose-700 text-xs">
+          <div className="rounded-xl bg-rose-50 border border-rose-200/80 p-3 flex items-start gap-2.5 text-rose-700 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{generalError}</span>
           </div>
         )}
 
         <Input
-          label="Email address"
+          label="EMAIL ADDRESS"
           type="email"
           autoComplete="email"
           placeholder="name@example.com"
           {...register('email')}
           error={errors.email?.message}
+          disabled={isSubmitting}
         />
 
         <Input
-          label="Password"
+          label="PASSWORD"
           type="password"
           autoComplete="current-password"
           placeholder="••••••••"
           {...register('password')}
           error={errors.password?.message}
+          disabled={isSubmitting}
         />
 
-        <div className="flex items-center justify-end -mt-2">
+        <div className="flex items-center justify-end -mt-1">
           <Link
             to="/forgot-password"
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-500 hover:underline"
           >
             Forgot password?
           </Link>
         </div>
 
-        <Button type="submit" fullWidth isLoading={isSubmitting}>
-          Sign In
-        </Button>
+        <div className="pt-2">
+          <Button
+            type="submit"
+            fullWidth
+            isLoading={isSubmitting}
+            className="h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md shadow-blue-500/25 transition-all"
+          >
+            Sign In
+          </Button>
+        </div>
 
-        <div className="pt-2 text-center text-xs text-slate-500">
-          Don't have an account?{' '}
+        <div className="pt-3 text-center">
           <Link
             to="/register"
-            className="font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+            className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
           >
             Create customer account
           </Link>

@@ -4,6 +4,7 @@ import com.supportai.ticket.entity.Ticket;
 import com.supportai.ticket.entity.TicketPriority;
 import com.supportai.ticket.entity.TicketCategory;
 
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class TicketSpecifications {
@@ -53,7 +54,7 @@ public final class TicketSpecifications {
                     + search.trim().toLowerCase()
                     + "%";
 
-            return criteriaBuilder.or(
+            Predicate textMatch = criteriaBuilder.or(
                     criteriaBuilder.like(
                             criteriaBuilder.lower(root.get("title")),
                             pattern
@@ -63,6 +64,25 @@ public final class TicketSpecifications {
                             pattern
                     )
             );
+
+            String cleaned = search.trim();
+            if (cleaned.startsWith("#")) {
+                cleaned = cleaned.substring(1).trim();
+            }
+
+            if (!cleaned.isEmpty() && cleaned.matches("\\d+")) {
+                try {
+                    Long searchId = Long.parseLong(cleaned);
+                    return criteriaBuilder.or(
+                            criteriaBuilder.equal(root.get("id"), searchId),
+                            textMatch
+                    );
+                } catch (NumberFormatException ignored) {
+                    // fall through
+                }
+            }
+
+            return textMatch;
         };
     }
 
