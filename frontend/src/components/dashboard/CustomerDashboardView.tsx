@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
+  LayoutGrid,
   Ticket,
   PlusCircle,
   KeyRound,
@@ -15,8 +16,14 @@ import {
   AlertCircle,
   ChevronDown,
   Sparkles,
-  Layers,
+  Zap,
   CheckCircle2,
+  FileText,
+  Search,
+  Users,
+  Shield,
+  Bot,
+  MessageSquare,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import { StatusBadge } from '@/components/badges/StatusBadge';
@@ -91,11 +98,7 @@ export function CustomerDashboardView({
     setTicketsError(false);
 
     try {
-      // 4 concurrent queries using getTicketsApi
-      // Query 1: Total tickets + 5 most recent tickets
-      // Query 2: Total OPEN tickets
-      // Query 3: Total IN_PROGRESS tickets
-      // Query 4: Total RESOLVED tickets
+      // 4 concurrent status-filtered queries to getTicketsApi
       const [allTicketsRes, openRes, inProgressRes, resolvedRes] =
         await Promise.all([
           getTicketsApi({
@@ -160,9 +163,9 @@ export function CustomerDashboardView({
   const userInitial = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-slate-50/70 flex flex-col font-sans text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-screen bg-slate-50/60 flex flex-col font-sans text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-900">
       {/* ========================================================================= */}
-      {/* 1. TOP HORIZONTAL NAVBAR                                                  */}
+      {/* 1. TOP NAVBAR                                                             */}
       {/* ========================================================================= */}
       <header className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -174,47 +177,58 @@ export function CustomerDashboardView({
               aria-label="AI Support Platform Dashboard"
             >
               <BrandLogo className="w-8 h-8 rounded-lg shadow-xs transition-transform group-hover:scale-105" />
-              <span className="text-base sm:text-lg font-bold bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-800 bg-clip-text text-transparent">
+              <span className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
                 AI Support Platform
               </span>
             </Link>
           </div>
 
-          {/* Center: Desktop Navigation Links */}
+          {/* Center: Rounded Navigation Pills */}
           <nav
             aria-label="Main Navigation"
-            className="hidden md:flex items-center gap-1.5"
+            className="hidden md:flex items-center gap-2.5"
           >
+            {/* Dashboard Pill (Active) */}
             <Link
               to="/dashboard"
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all ${
                 location.pathname === '/dashboard'
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-xs'
+                  ? 'bg-blue-100/80 text-blue-700 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
               }`}
             >
-              Dashboard
+              <LayoutGrid className="w-4 h-4 text-blue-600" />
+              <span>Dashboard</span>
             </Link>
+
+            {/* Tickets Pill */}
             <Link
               to="/tickets"
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all ${
                 location.pathname === '/tickets'
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-xs font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  ? 'bg-blue-100/80 text-blue-700 shadow-xs'
+                  : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50/60'
               }`}
             >
-              Tickets
+              <Ticket className="w-4 h-4 text-purple-600" />
+              <span>Tickets</span>
             </Link>
+
+            {/* Submit Ticket Pill */}
             <Link
               to="/tickets/new"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/70 border border-indigo-200/70 transition-colors"
+              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                location.pathname === '/tickets/new'
+                  ? 'bg-blue-100/80 text-blue-700 shadow-xs'
+                  : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50/60'
+              }`}
             >
-              <PlusCircle className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-purple-600" />
               <span>Submit Ticket</span>
             </Link>
           </nav>
 
-          {/* Right: Notification Bell & User Profile Dropdown */}
+          {/* Right: Notification Bell & Profile Dropdown */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Reused NotificationBell component */}
             <NotificationBell />
@@ -225,15 +239,15 @@ export function CustomerDashboardView({
                 <button
                   type="button"
                   aria-label="Open user menu"
-                  className="flex items-center gap-2 p-1 rounded-full sm:rounded-lg sm:px-2.5 sm:py-1.5 hover:bg-slate-100 text-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 text-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs border border-white">
+                  <div className="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
                     {userInitial}
                   </div>
                   <span className="hidden sm:inline text-sm font-semibold text-slate-800 max-w-[130px] truncate">
                     {displayName}
                   </span>
-                  <ChevronDown className="hidden sm:inline w-3.5 h-3.5 text-slate-400" />
+                  <ChevronDown className="hidden sm:inline w-3.5 h-3.5 text-slate-500" />
                 </button>
               </DropdownMenu.Trigger>
 
@@ -299,14 +313,14 @@ export function CustomerDashboardView({
           </div>
         </div>
 
-        {/* Mobile Navigation Drawer / Panel */}
+        {/* Mobile Navigation Drawer */}
         {mobileNavOpen && (
           <div
             id="mobile-nav-panel"
             className="md:hidden border-t border-slate-200/80 bg-white/98 px-4 pt-3 pb-5 shadow-lg space-y-3 animate-in slide-in-from-top-2 duration-150"
           >
             <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
+              <div className="w-9 h-9 rounded-full bg-purple-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
                 {userInitial}
               </div>
               <div className="min-w-0">
@@ -321,31 +335,33 @@ export function CustomerDashboardView({
               <Link
                 to="/dashboard"
                 onClick={() => setMobileNavOpen(false)}
-                className={`block px-3 py-2 rounded-lg text-sm font-medium ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
                   location.pathname === '/dashboard'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                    ? 'bg-blue-50 text-blue-700 font-semibold'
                     : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                Dashboard
+                <LayoutGrid className="w-4 h-4 text-blue-600" />
+                <span>Dashboard</span>
               </Link>
               <Link
                 to="/tickets"
                 onClick={() => setMobileNavOpen(false)}
-                className={`block px-3 py-2 rounded-lg text-sm font-medium ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
                   location.pathname === '/tickets'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                    ? 'bg-purple-50 text-purple-700 font-semibold'
                     : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                Tickets
+                <Ticket className="w-4 h-4 text-purple-600" />
+                <span>Tickets</span>
               </Link>
               <Link
                 to="/tickets/new"
                 onClick={() => setMobileNavOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-purple-700 hover:bg-purple-50"
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle className="w-4 h-4 text-purple-600" />
                 <span>Submit Ticket</span>
               </Link>
               <div className="pt-2 border-t border-slate-100" />
@@ -377,42 +393,258 @@ export function CustomerDashboardView({
       {/* 2. MAIN DASHBOARD CONTENT                                                 */}
       {/* ========================================================================= */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        {/* Welcome Hero Banner */}
+        {/* ======================================================================= */}
+        {/* A. HERO SECTION WITH ROBOT ILLUSTRATION & FLOATING BADGES               */}
+        {/* ======================================================================= */}
         <section
           aria-labelledby="welcome-heading"
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-50/90 via-purple-50/60 to-blue-50/80 border border-indigo-100/80 shadow-xs p-6 sm:p-8 mb-8"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-purple-50/80 border border-indigo-100/60 p-6 sm:p-10 lg:p-12 mb-8 shadow-xs"
         >
-          {/* Decorative ambient background visual */}
+          {/* Subtle Ambient Sparkle Stars in Background */}
           <div
-            className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-gradient-to-br from-indigo-200/30 to-purple-200/30 blur-2xl pointer-events-none"
-            aria-hidden="true"
-          />
-          <div
-            className="absolute bottom-0 right-10 translate-y-1/4 opacity-10 pointer-events-none hidden sm:block"
+            className="absolute top-6 left-1/3 w-3 h-3 text-indigo-300 opacity-60 pointer-events-none"
             aria-hidden="true"
           >
-            <Layers className="w-48 h-48 text-indigo-700" />
+            ✦
+          </div>
+          <div
+            className="absolute bottom-8 left-1/2 w-4 h-4 text-purple-300 opacity-50 pointer-events-none"
+            aria-hidden="true"
+          >
+            ✦
+          </div>
+          <div
+            className="absolute top-12 right-1/4 w-3.5 h-3.5 text-blue-300 opacity-50 pointer-events-none"
+            aria-hidden="true"
+          >
+            ✦
           </div>
 
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/80 text-indigo-700 border border-indigo-200/60 shadow-xs mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>AI-Powered Customer Portal</span>
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Column: Heading, Subtitle, Description */}
+            <div className="lg:col-span-7 space-y-3">
+              <h1
+                id="welcome-heading"
+                className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight"
+              >
+                Welcome back,
+                <br />
+                <span className="text-blue-600 font-extrabold">
+                  {displayName}!
+                </span>{' '}
+                <span role="img" aria-label="Waving hand">
+                  👋
+                </span>
+              </h1>
+              <p className="text-base sm:text-lg font-bold text-slate-700 pt-1">
+                AI-Powered Support Ticket Management Platform
+              </p>
+              <p className="text-sm sm:text-base text-slate-600 max-w-xl leading-relaxed">
+                Create, track, and resolve your support requests with the help of
+                AI. Get faster, smarter, and more efficient support.
+              </p>
             </div>
-            <h1
-              id="welcome-heading"
-              className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
-            >
-              Welcome back, {displayName}! 👋
-            </h1>
-            <p className="mt-1 text-sm sm:text-base font-semibold text-indigo-950/90">
-              AI Support Ticket Management Platform — Dashboard Overview
-            </p>
-            <p className="mt-2 text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Track your support inquiries in real time, monitor automated
-              triage updates, or quickly submit a new ticket for rapid
-              resolution.
-            </p>
+
+            {/* Right Column: AI Robot Vector Composition with 3 Floating Badges */}
+            <div className="lg:col-span-5 relative flex items-center justify-center min-h-[220px] sm:min-h-[260px]">
+              {/* Floating Badge 1: Top-Left (AI Classifies Your Ticket) */}
+              <div className="absolute top-0 left-2 sm:left-4 z-20 flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-white shadow-md border border-slate-100 animate-in fade-in zoom-in duration-200">
+                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                  <Sparkles className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-900 leading-tight">
+                    AI Classifies
+                  </p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">
+                    Your Ticket
+                  </p>
+                </div>
+              </div>
+
+              {/* Floating Badge 2: Top-Right (Faster Resolutions) */}
+              <div className="absolute top-2 right-2 sm:right-4 z-20 flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-white shadow-md border border-slate-100 animate-in fade-in zoom-in duration-200 delay-100">
+                <div className="w-6 h-6 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600 shrink-0">
+                  <Zap className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-900 leading-tight">
+                    Faster
+                  </p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">
+                    Resolutions
+                  </p>
+                </div>
+              </div>
+
+              {/* Center: Friendly AI Robot Illustration with Laptop */}
+              <div className="relative z-10 w-44 sm:w-56 h-44 sm:h-56 flex items-center justify-center">
+                <svg
+                  viewBox="0 0 240 220"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full h-full drop-shadow-lg"
+                  aria-hidden="true"
+                >
+                  <defs>
+                    <radialGradient
+                      id="botGlow"
+                      cx="50%"
+                      cy="45%"
+                      r="50%"
+                    >
+                      <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#C084FC" stopOpacity="0" />
+                    </radialGradient>
+                    <linearGradient
+                      id="botHeadGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <stop offset="0%" stopColor="#FFFFFF" />
+                      <stop offset="100%" stopColor="#E2E8F0" />
+                    </linearGradient>
+                    <linearGradient
+                      id="botScreenGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="0%"
+                      y2="100%"
+                    >
+                      <stop offset="0%" stopColor="#0F172A" />
+                      <stop offset="100%" stopColor="#1E293B" />
+                    </linearGradient>
+                    <linearGradient
+                      id="laptopGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="100%" stopColor="#1D4ED8" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Ambient Glow */}
+                  <circle cx="120" cy="100" r="90" fill="url(#botGlow)" />
+
+                  {/* Antenna */}
+                  <line
+                    x1="120"
+                    y1="40"
+                    x2="120"
+                    y2="20"
+                    stroke="#38BDF8"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="120" cy="18" r="6" fill="#38BDF8" />
+
+                  {/* Head Outer Shell */}
+                  <rect
+                    x="55"
+                    y="40"
+                    width="130"
+                    height="95"
+                    rx="38"
+                    fill="url(#botHeadGrad)"
+                    stroke="#CBD5E1"
+                    strokeWidth="2"
+                  />
+
+                  {/* Left / Right Ear nodes */}
+                  <rect
+                    x="42"
+                    y="70"
+                    width="16"
+                    height="32"
+                    rx="8"
+                    fill="#38BDF8"
+                  />
+                  <rect
+                    x="182"
+                    y="70"
+                    width="16"
+                    height="32"
+                    rx="8"
+                    fill="#38BDF8"
+                  />
+
+                  {/* Face Screen Visor */}
+                  <rect
+                    x="68"
+                    y="52"
+                    width="104"
+                    height="68"
+                    rx="26"
+                    fill="url(#botScreenGrad)"
+                  />
+
+                  {/* Expressive Glowing Eyes */}
+                  <circle cx="95" cy="84" r="11" fill="#38BDF8" />
+                  <circle cx="98" cy="81" r="3.5" fill="#FFFFFF" />
+
+                  <circle cx="145" cy="84" r="11" fill="#38BDF8" />
+                  <circle cx="148" cy="81" r="3.5" fill="#FFFFFF" />
+
+                  {/* Curved Smile */}
+                  <path
+                    d="M110 98 Q120 106 130 98"
+                    stroke="#38BDF8"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+
+                  {/* Robot Shoulders / Arms */}
+                  <rect
+                    x="80"
+                    y="132"
+                    width="80"
+                    height="50"
+                    rx="20"
+                    fill="#F1F5F9"
+                    stroke="#CBD5E1"
+                    strokeWidth="1.5"
+                  />
+
+                  {/* Laptop Screen & Keyboard */}
+                  <path
+                    d="M75 145 L165 145 L155 190 L85 190 Z"
+                    fill="url(#laptopGrad)"
+                    stroke="#2563EB"
+                    strokeWidth="1.5"
+                  />
+                  <rect
+                    x="85"
+                    y="152"
+                    width="70"
+                    height="28"
+                    rx="4"
+                    fill="#0F172A"
+                  />
+                  <circle cx="120" cy="166" r="4.5" fill="#38BDF8" />
+                </svg>
+              </div>
+
+              {/* Floating Badge 3: Bottom-Right (Your Support, Simplified) */}
+              <div className="absolute bottom-1 right-1 sm:right-3 z-20 flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-white shadow-md border border-slate-100 animate-in fade-in zoom-in duration-200 delay-200">
+                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-900 leading-tight">
+                    Your Support,
+                  </p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">
+                    Simplified
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -440,116 +672,120 @@ export function CustomerDashboardView({
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* 3. FOUR TICKET SUMMARY CARDS                                              */}
-        {/* ========================================================================= */}
+        {/* ======================================================================= */}
+        {/* B. FOUR TICKET STATISTICS CARDS (EXACT PASTEL COLOR PALETTE)            */}
+        {/* ======================================================================= */}
         <section
           aria-label="Ticket Overview Statistics"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8"
         >
-          {/* Card 1: TOTAL TICKETS */}
-          <div className="rounded-xl bg-white border border-slate-200/90 p-5 shadow-xs transition-shadow hover:shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-purple-700">
-                Total Tickets
-              </span>
-              <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100/70">
-                <Ticket className="w-4 h-4" />
-              </div>
+          {/* Card 1: TOTAL TICKETS (Pastel Lavender) */}
+          <div className="rounded-2xl bg-[#faf5ff] border border-purple-100/90 p-6 shadow-xs transition-shadow hover:shadow-md">
+            <div className="w-12 h-12 rounded-xl bg-[#f3e8ff] text-purple-600 flex items-center justify-center mb-4">
+              <Ticket className="w-6 h-6" />
             </div>
-            <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-700">
+              Total Tickets
+            </span>
+            <div className="flex items-baseline gap-2 mt-1">
               {isLoadingStats ? (
-                <div className="h-9 w-16 bg-purple-100/80 rounded animate-pulse" />
+                <div className="h-9 w-16 bg-purple-200/60 rounded animate-pulse" />
               ) : statsError ? (
-                <span className="text-2xl font-bold text-slate-400" title="Data unavailable">
+                <span
+                  className="text-2xl font-bold text-slate-400"
+                  title="Data unavailable"
+                >
                   —
                 </span>
               ) : (
-                <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                   {stats?.total ?? 0}
                 </span>
               )}
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              All lifetime submitted tickets
+              All support tickets created
             </p>
           </div>
 
-          {/* Card 2: OPEN TICKETS */}
-          <div className="rounded-xl bg-white border border-slate-200/90 p-5 shadow-xs transition-shadow hover:shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                Open Tickets
-              </span>
-              <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100/70">
-                <Clock className="w-4 h-4" />
-              </div>
+          {/* Card 2: OPEN TICKETS (Pastel Warm Amber/Peach) */}
+          <div className="rounded-2xl bg-[#fffbeb] border border-amber-100/90 p-6 shadow-xs transition-shadow hover:shadow-md">
+            <div className="w-12 h-12 rounded-xl bg-[#fef3c7] text-amber-600 flex items-center justify-center mb-4">
+              <Clock className="w-6 h-6" />
             </div>
-            <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+              Open Tickets
+            </span>
+            <div className="flex items-baseline gap-2 mt-1">
               {isLoadingStats ? (
-                <div className="h-9 w-16 bg-amber-100/80 rounded animate-pulse" />
+                <div className="h-9 w-16 bg-amber-200/60 rounded animate-pulse" />
               ) : statsError ? (
-                <span className="text-2xl font-bold text-slate-400" title="Data unavailable">
+                <span
+                  className="text-2xl font-bold text-slate-400"
+                  title="Data unavailable"
+                >
                   —
                 </span>
               ) : (
-                <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                   {stats?.open ?? 0}
                 </span>
               )}
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Awaiting review or triage
+              Awaiting agent review
             </p>
           </div>
 
-          {/* Card 3: IN PROGRESS */}
-          <div className="rounded-xl bg-white border border-slate-200/90 p-5 shadow-xs transition-shadow hover:shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-sky-700">
-                In Progress
-              </span>
-              <div className="w-9 h-9 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100/70">
-                <RefreshCw className="w-4 h-4" />
-              </div>
+          {/* Card 3: IN PROGRESS (Pastel Sky Blue) */}
+          <div className="rounded-2xl bg-[#f0f9ff] border border-sky-100/90 p-6 shadow-xs transition-shadow hover:shadow-md">
+            <div className="w-12 h-12 rounded-xl bg-[#e0f2fe] text-sky-600 flex items-center justify-center mb-4">
+              <RefreshCw className="w-6 h-6" />
             </div>
-            <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-sky-700">
+              In Progress
+            </span>
+            <div className="flex items-baseline gap-2 mt-1">
               {isLoadingStats ? (
-                <div className="h-9 w-16 bg-sky-100/80 rounded animate-pulse" />
+                <div className="h-9 w-16 bg-sky-200/60 rounded animate-pulse" />
               ) : statsError ? (
-                <span className="text-2xl font-bold text-slate-400" title="Data unavailable">
+                <span
+                  className="text-2xl font-bold text-slate-400"
+                  title="Data unavailable"
+                >
                   —
                 </span>
               ) : (
-                <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                   {stats?.inProgress ?? 0}
                 </span>
               )}
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Currently being handled
+              Currently being investigated
             </p>
           </div>
 
-          {/* Card 4: RESOLVED */}
-          <div className="rounded-xl bg-white border border-slate-200/90 p-5 shadow-xs transition-shadow hover:shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                Resolved
-              </span>
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/70">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
+          {/* Card 4: RESOLVED (Pastel Mint Green) */}
+          <div className="rounded-2xl bg-[#f0fdf4] border border-emerald-100/90 p-6 shadow-xs transition-shadow hover:shadow-md">
+            <div className="w-12 h-12 rounded-xl bg-[#dcfce7] text-emerald-600 flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-            <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Resolved
+            </span>
+            <div className="flex items-baseline gap-2 mt-1">
               {isLoadingStats ? (
-                <div className="h-9 w-16 bg-emerald-100/80 rounded animate-pulse" />
+                <div className="h-9 w-16 bg-emerald-200/60 rounded animate-pulse" />
               ) : statsError ? (
-                <span className="text-2xl font-bold text-slate-400" title="Data unavailable">
+                <span
+                  className="text-2xl font-bold text-slate-400"
+                  title="Data unavailable"
+                >
                   —
                 </span>
               ) : (
-                <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                   {stats?.resolved ?? 0}
                 </span>
               )}
@@ -560,87 +796,104 @@ export function CustomerDashboardView({
           </div>
         </section>
 
-        {/* ========================================================================= */}
-        {/* 4. TWO PRIMARY ACTION CARDS                                               */}
-        {/* ========================================================================= */}
+        {/* ======================================================================= */}
+        {/* C. TWO ILLUSTRATED QUICK-ACTION CARDS                                   */}
+        {/* ======================================================================= */}
         <section
           aria-label="Quick Actions"
           className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8"
         >
-          {/* Action Card A: View My Support Tickets */}
-          <div className="relative group rounded-2xl bg-white border border-slate-200/90 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-105">
-                <Ticket className="w-6 h-6" />
+          {/* Action Card 1: View My Support Tickets */}
+          <div className="rounded-2xl bg-white border border-purple-100/90 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="flex items-start gap-4">
+              {/* Document + Magnifying Glass Icon Box */}
+              <div className="w-14 h-14 rounded-2xl bg-purple-100/70 text-purple-600 flex items-center justify-center shrink-0">
+                <div className="relative">
+                  <FileText className="w-7 h-7" />
+                  <Search className="w-4 h-4 text-purple-700 absolute -bottom-1 -right-1 bg-purple-100 rounded-full" />
+                </div>
               </div>
-              <h2 className="text-lg font-bold text-slate-900">
-                My Support Tickets
-              </h2>
-              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
-                Browse, filter, and track status updates on all submitted
-                inquiries with real-time resolution history.
-              </p>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  View My Support Tickets
+                </h2>
+                <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+                  Search and filter your submitted tickets by status or priority.
+                </p>
+              </div>
             </div>
             <div className="mt-6">
               <Link
                 to="/tickets"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-purple-50 text-purple-700 border border-purple-200/80 hover:bg-purple-100/90 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-[#f5f0ff] hover:bg-[#ede5ff] text-purple-700 border border-purple-200/80 transition-colors"
               >
+                <ArrowRight className="w-4 h-4 rotate-45" />
                 <span>View Tickets</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
 
-          {/* Action Card B: Submit a New Ticket */}
-          <div className="relative group rounded-2xl bg-white border border-slate-200/90 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-105">
-                <PlusCircle className="w-6 h-6" />
+          {/* Action Card 2: Submit a New Ticket */}
+          <div className="rounded-2xl bg-white border border-blue-100/90 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="flex items-start gap-4">
+              {/* Document + Plus Badge Icon Box */}
+              <div className="w-14 h-14 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center shrink-0">
+                <div className="relative">
+                  <FileText className="w-7 h-7" />
+                  <PlusCircle className="w-4 h-4 text-blue-700 absolute -bottom-1 -right-1 bg-white rounded-full" />
+                </div>
               </div>
-              <h2 className="text-lg font-bold text-slate-900">
-                Submit New Ticket
-              </h2>
-              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
-                Experience automated AI triage, smart category prediction, and
-                priority queue routing for urgent issues.
-              </p>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Submit a New Ticket
+                </h2>
+                <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+                  Create a support ticket for an issue or request.
+                </p>
+              </div>
             </div>
             <div className="mt-6">
               <Link
                 to="/tickets/new"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white shadow-xs hover:bg-indigo-700 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
               >
-                <span>Submit Ticket</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                <PlusCircle className="w-4 h-4" />
+                <span>Create Ticket</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
         </section>
 
-        {/* ========================================================================= */}
-        {/* 5. RECENT TICKETS SECTION                                                 */}
-        {/* ========================================================================= */}
+        {/* ======================================================================= */}
+        {/* D. RECENT TICKETS SECTION                                               */}
+        {/* ======================================================================= */}
         <section
           aria-labelledby="recent-tickets-heading"
-          className="rounded-2xl bg-white border border-slate-200/90 shadow-xs overflow-hidden mb-12"
+          className="rounded-2xl bg-white border border-slate-200/90 shadow-xs overflow-hidden mb-10"
         >
-          {/* Section Header */}
+          {/* Header Bar */}
           <div className="p-5 sm:px-6 flex items-center justify-between border-b border-slate-100">
-            <div>
-              <h2
-                id="recent-tickets-heading"
-                className="text-lg font-bold text-slate-900"
-              >
-                Recent Tickets
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Your latest submitted support requests
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h2
+                  id="recent-tickets-heading"
+                  className="text-lg font-bold text-slate-900"
+                >
+                  Recent Tickets
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Your latest support inquiries and real-time statuses
+                </p>
+              </div>
             </div>
             <Link
               to="/tickets"
-              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
             >
               <span>View All</span>
               <ArrowRight className="w-4 h-4" />
@@ -672,7 +925,7 @@ export function CustomerDashboardView({
               <button
                 type="button"
                 onClick={loadDashboardData}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Retry Loading Tickets</span>
@@ -695,7 +948,7 @@ export function CustomerDashboardView({
               </p>
               <Link
                 to="/tickets/new"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-xs"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Create Your First Ticket</span>
@@ -703,31 +956,31 @@ export function CustomerDashboardView({
             </div>
           )}
 
-          {/* Populated State — Desktop & Tablet Table */}
+          {/* Populated Table for Desktop and Tablet (≥768px) */}
           {!isLoadingTickets && !ticketsError && recentTickets.length > 0 && (
-            <div className="hidden sm:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200/80">
+                <thead className="bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200/80">
                   <tr>
-                    <th scope="col" className="py-3 px-4 sm:px-6">
-                      ID
+                    <th scope="col" className="py-3.5 px-6">
+                      Ticket ID
                     </th>
-                    <th scope="col" className="py-3 px-4 sm:px-6">
+                    <th scope="col" className="py-3.5 px-6">
                       Title
                     </th>
-                    <th scope="col" className="py-3 px-4 sm:px-6">
-                      Category
-                    </th>
-                    <th scope="col" className="py-3 px-4 sm:px-6">
-                      Priority
-                    </th>
-                    <th scope="col" className="py-3 px-4 sm:px-6">
+                    <th scope="col" className="py-3.5 px-6">
                       Status
                     </th>
-                    <th scope="col" className="py-3 px-4 sm:px-6">
+                    <th scope="col" className="py-3.5 px-6">
+                      Priority
+                    </th>
+                    <th scope="col" className="py-3.5 px-6">
+                      Category
+                    </th>
+                    <th scope="col" className="py-3.5 px-6">
                       Created
                     </th>
-                    <th scope="col" className="py-3 px-4 sm:px-6 text-right">
+                    <th scope="col" className="py-3.5 px-6 text-right">
                       Action
                     </th>
                   </tr>
@@ -738,33 +991,33 @@ export function CustomerDashboardView({
                       key={ticket.id}
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
-                      <td className="py-3.5 px-4 sm:px-6 font-mono text-xs font-bold text-slate-500">
+                      <td className="py-4 px-6 font-mono text-xs font-bold text-slate-900">
                         #{ticket.id}
                       </td>
-                      <td className="py-3.5 px-4 sm:px-6">
+                      <td className="py-4 px-6">
                         <Link
                           to={`/tickets/${ticket.id}`}
-                          className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1"
+                          className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1"
                         >
                           {ticket.title}
                         </Link>
                       </td>
-                      <td className="py-3.5 px-4 sm:px-6">
-                        <CategoryBadge category={ticket.category} />
-                      </td>
-                      <td className="py-3.5 px-4 sm:px-6">
-                        <PriorityBadge priority={ticket.priority} />
-                      </td>
-                      <td className="py-3.5 px-4 sm:px-6">
+                      <td className="py-4 px-6">
                         <StatusBadge status={ticket.status} />
                       </td>
-                      <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-500 whitespace-nowrap">
+                      <td className="py-4 px-6">
+                        <PriorityBadge priority={ticket.priority} />
+                      </td>
+                      <td className="py-4 px-6">
+                        <CategoryBadge category={ticket.category} />
+                      </td>
+                      <td className="py-4 px-6 text-xs text-slate-500 whitespace-nowrap">
                         {formatTimeAgo(ticket.createdAt)}
                       </td>
-                      <td className="py-3.5 px-4 sm:px-6 text-right">
+                      <td className="py-4 px-6 text-right">
                         <Link
                           to={`/tickets/${ticket.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
                         >
                           <span>View</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -777,24 +1030,24 @@ export function CustomerDashboardView({
             </div>
           )}
 
-          {/* Populated State — Mobile Stacked Cards (<640px) */}
+          {/* Stacked Cards for Mobile and Narrow Viewports (<768px) */}
           {!isLoadingTickets && !ticketsError && recentTickets.length > 0 && (
-            <div className="sm:hidden divide-y divide-slate-100">
+            <div className="md:hidden divide-y divide-slate-100">
               {recentTickets.map((ticket) => (
-                <div key={ticket.id} className="p-4 space-y-2">
+                <div key={ticket.id} className="p-4 space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-bold text-slate-500">
+                    <span className="font-mono text-xs font-bold text-slate-900">
                       #{ticket.id}
                     </span>
                     <StatusBadge status={ticket.status} />
                   </div>
                   <Link
                     to={`/tickets/${ticket.id}`}
-                    className="block font-semibold text-sm text-slate-900 hover:text-indigo-600 transition-colors"
+                    className="block font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors"
                   >
                     {ticket.title}
                   </Link>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-0.5">
                     <CategoryBadge category={ticket.category} />
                     <PriorityBadge priority={ticket.priority} />
                   </div>
@@ -802,7 +1055,7 @@ export function CustomerDashboardView({
                     <span>{formatTimeAgo(ticket.createdAt)}</span>
                     <Link
                       to={`/tickets/${ticket.id}`}
-                      className="inline-flex items-center gap-1 font-semibold text-indigo-600"
+                      className="inline-flex items-center gap-1 font-semibold text-blue-600"
                     >
                       <span>View details</span>
                       <ArrowRight className="w-3 h-3" />
@@ -813,10 +1066,147 @@ export function CustomerDashboardView({
             </div>
           )}
         </section>
+
+        {/* ======================================================================= */}
+        {/* E. “SUPPORT MADE SMARTER WITH AI” SECTION (WORKFLOW & FEATURES)         */}
+        {/* ======================================================================= */}
+        <section
+          aria-labelledby="workflow-heading"
+          className="rounded-3xl bg-gradient-to-b from-[#f8f9ff] via-[#f1edff] to-[#f8f9ff] border border-purple-100/60 p-6 sm:p-10 mb-10 shadow-xs"
+        >
+          {/* Header */}
+          <div className="text-left mb-8">
+            <span className="inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-purple-100 text-purple-700 mb-3">
+              How It Works
+            </span>
+            <h2
+              id="workflow-heading"
+              className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight"
+            >
+              Support Made Smarter{' '}
+              <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                with AI
+              </span>
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed">
+              From submitting a ticket to getting a resolution, our AI-powered
+              platform helps you every step of the way.
+            </p>
+          </div>
+
+          {/* 4-Step Connected Workflow Diagram */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 items-center mb-10">
+            {/* Step 1 */}
+            <div className="relative rounded-2xl bg-white p-5 shadow-sm border border-slate-100 text-center flex flex-col items-center">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                <FileText className="w-6 h-6" />
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
+                Submit
+                <br />
+                Your Issue
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="relative rounded-2xl bg-white p-5 shadow-sm border border-slate-100 text-center flex flex-col items-center">
+              <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-3">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
+                AI Analyzes
+                <br />
+                and Categorizes
+              </p>
+            </div>
+
+            {/* Step 3 (Truthful description: Available in the Agent Queue) */}
+            <div className="relative rounded-2xl bg-white p-5 shadow-sm border border-slate-100 text-center flex flex-col items-center">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                <Users className="w-6 h-6" />
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
+                Available
+                <br />
+                in the Agent Queue
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="relative rounded-2xl bg-white p-5 shadow-sm border border-slate-100 text-center flex flex-col items-center">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
+                Get
+                <br />
+                Resolution
+              </p>
+            </div>
+          </div>
+
+          {/* Four Compact Feature Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {/* Feature 1 */}
+            <div className="rounded-2xl bg-[#fafaff] border border-indigo-100/70 p-5 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3.5">
+                <Bot className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">
+                AI-Powered Classification
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Automatically categorizes your ticket to get it to the right team
+                faster.
+              </p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="rounded-2xl bg-[#f8fbff] border border-blue-100/70 p-5 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3.5">
+                <Zap className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Faster Response Times
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Reduces manual processing and helps resolve issues quickly.
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="rounded-2xl bg-[#f6fdf9] border border-emerald-100/70 p-5 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3.5">
+                <Users className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Better Support Experience
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Connects you with the right team for accurate and relevant
+                solutions.
+              </p>
+            </div>
+
+            {/* Feature 4 (Truthful description: Role-based authorization & audit tracking) */}
+            <div className="rounded-2xl bg-[#fffdf5] border border-amber-100/70 p-5 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3.5">
+                <Shield className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Secure &amp; Reliable
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Protected by role-based access controls and audit logging to
+                help keep support requests secure.
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* ========================================================================= */}
-      {/* 6. AUTHENTICATED FOOTER                                                   */}
+      {/* 3. AUTHENTICATED FOOTER                                                   */}
       {/* ========================================================================= */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -841,25 +1231,25 @@ export function CustomerDashboardView({
             >
               <Link
                 to="/dashboard"
-                className="hover:text-indigo-600 transition-colors"
+                className="hover:text-blue-600 transition-colors"
               >
                 Dashboard
               </Link>
               <Link
                 to="/tickets"
-                className="hover:text-indigo-600 transition-colors"
+                className="hover:text-blue-600 transition-colors"
               >
                 Tickets
               </Link>
               <Link
                 to="/tickets/new"
-                className="hover:text-indigo-600 transition-colors"
+                className="hover:text-blue-600 transition-colors"
               >
                 Submit Ticket
               </Link>
               <Link
                 to="/notifications"
-                className="hover:text-indigo-600 transition-colors"
+                className="hover:text-blue-600 transition-colors"
               >
                 Notifications
               </Link>

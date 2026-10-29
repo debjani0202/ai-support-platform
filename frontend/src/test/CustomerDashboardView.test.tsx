@@ -18,12 +18,12 @@ describe('CustomerDashboardView', () => {
 
   const mockTickets = [
     {
-      id: 101,
-      title: 'Network latency in US East',
-      description: 'Experiencing high packet drop',
+      id: 38,
+      title: 'Unable to Log In to My Account',
+      description: 'Password reset email is not arriving',
       status: 'OPEN' as const,
-      priority: 'HIGH' as const,
-      category: 'TECHNICAL_ISSUE' as const,
+      priority: 'MEDIUM' as const,
+      category: 'ACCOUNT_ACCESS' as const,
       createdBy: 12,
       assignedTo: null,
       createdAt: '2026-10-26T12:00:00Z',
@@ -31,13 +31,13 @@ describe('CustomerDashboardView', () => {
     },
   ];
 
-  it('renders top horizontal navbar with brand logo and core navigation items', () => {
+  it('renders top navbar with brand logo and rounded navigation pills', () => {
     render(
       <MemoryRouter>
         <CustomerDashboardView
           user={mockUser}
           isPreview={true}
-          initialStats={{ total: 5, open: 2, inProgress: 1, resolved: 2 }}
+          initialStats={{ total: 1, open: 1, inProgress: 0, resolved: 0 }}
           initialTickets={mockTickets}
         />
       </MemoryRouter>
@@ -50,28 +50,31 @@ describe('CustomerDashboardView', () => {
     expect(screen.getAllByText('Debjani Mondal').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders welcome hero heading with dynamic user name and platform overview', () => {
+  it('renders blue-purple gradient hero with dynamic greeting and floating badges', () => {
     render(
       <MemoryRouter>
         <CustomerDashboardView
           user={mockUser}
           isPreview={true}
-          initialStats={{ total: 5, open: 2, inProgress: 1, resolved: 2 }}
+          initialStats={{ total: 1, open: 1, inProgress: 0, resolved: 0 }}
         />
       </MemoryRouter>
     );
 
-    const welcomeElements = screen.getAllByText(/Welcome back, Debjani Mondal!/);
-    expect(welcomeElements.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Welcome back,/i)).toBeDefined();
+    expect(screen.getByText(/Debjani Mondal!/i)).toBeDefined();
     expect(
-      screen.getByText(/AI Support Ticket Management Platform/i)
+      screen.getByText(/AI-Powered Support Ticket Management Platform/i)
     ).toBeDefined();
     expect(
-      screen.getByText(/Track your support inquiries in real time/i)
+      screen.getByText(/Create, track, and resolve your support requests with the help of AI/i)
     ).toBeDefined();
+    expect(screen.getByText('AI Classifies')).toBeDefined();
+    expect(screen.getByText('Faster')).toBeDefined();
+    expect(screen.getByText('Your Support,')).toBeDefined();
   });
 
-  it('renders the four ticket statistics cards with accurate counts', () => {
+  it('renders the four pastel ticket statistics cards with accurate counts', () => {
     render(
       <MemoryRouter>
         <CustomerDashboardView
@@ -91,7 +94,7 @@ describe('CustomerDashboardView', () => {
     expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('renders the two primary action cards linking to tickets and ticket creation', () => {
+  it('renders the two illustrated action cards linking to tickets and ticket creation', () => {
     render(
       <MemoryRouter>
         <CustomerDashboardView
@@ -102,9 +105,10 @@ describe('CustomerDashboardView', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('My Support Tickets')).toBeDefined();
-    expect(screen.getByText('Submit New Ticket')).toBeDefined();
+    expect(screen.getByText('View My Support Tickets')).toBeDefined();
+    expect(screen.getByText('Submit a New Ticket')).toBeDefined();
     expect(screen.getByText('View Tickets')).toBeDefined();
+    expect(screen.getByText('Create Ticket')).toBeDefined();
   });
 
   it('renders recent tickets section with table when tickets exist', () => {
@@ -120,10 +124,11 @@ describe('CustomerDashboardView', () => {
     );
 
     expect(screen.getByText('Recent Tickets')).toBeDefined();
-    expect(screen.getAllByText('#101').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Network latency in US East').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('#38').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Unable to Log In to My Account').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Open').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('High').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Medium').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Account Access').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders clean empty state when no recent tickets exist', () => {
@@ -142,6 +147,36 @@ describe('CustomerDashboardView', () => {
     expect(screen.getByText('Create Your First Ticket')).toBeDefined();
   });
 
+  it('renders Support Made Smarter with AI workflow and compact feature cards', () => {
+    render(
+      <MemoryRouter>
+        <CustomerDashboardView
+          user={mockUser}
+          isPreview={true}
+          initialStats={{ total: 1, open: 1, inProgress: 0, resolved: 0 }}
+        />
+      </MemoryRouter>
+    );
+
+    // Section Badge and Heading
+    expect(screen.getByText('How It Works')).toBeDefined();
+    expect(screen.getByText(/Support Made Smarter/i)).toBeDefined();
+    expect(screen.getByText(/with AI/i)).toBeDefined();
+
+    // 4-Step Connected Workflow
+    expect(screen.getByText(/Your Issue/i)).toBeDefined();
+    expect(screen.getByText(/AI Analyzes/i)).toBeDefined();
+    expect(screen.getByText(/Available/i)).toBeDefined();
+    expect(screen.getByText(/in the Agent Queue/i)).toBeDefined();
+    expect(screen.getAllByText(/Resolution/i).length).toBeGreaterThanOrEqual(1);
+
+    // 4 Compact Feature Cards
+    expect(screen.getByText('AI-Powered Classification')).toBeDefined();
+    expect(screen.getByText('Faster Response Times')).toBeDefined();
+    expect(screen.getByText('Better Support Experience')).toBeDefined();
+    expect(screen.getByText(/Secure & Reliable/i)).toBeDefined();
+  });
+
   it('toggles mobile navigation drawer and handles escape key closing', () => {
     render(
       <MemoryRouter>
@@ -156,14 +191,14 @@ describe('CustomerDashboardView', () => {
     const toggleButton = screen.getByLabelText('Toggle navigation menu');
     expect(toggleButton.getAttribute('aria-expanded')).toBe('false');
 
-    // Click to open mobile navigation
+    // Open mobile menu
     fireEvent.click(toggleButton);
     expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByText('debjani8650@gmail.com')).toBeDefined();
     expect(screen.getByText('Change Password')).toBeDefined();
     expect(screen.getByText('Sign Out')).toBeDefined();
 
-    // Press Escape to close mobile menu
+    // Press Escape to close
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(toggleButton.getAttribute('aria-expanded')).toBe('false');
   });
