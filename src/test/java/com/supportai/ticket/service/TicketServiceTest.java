@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 import com.supportai.audit.service.TicketAuditLogService;
 import com.supportai.notification.service.NotificationService;
@@ -372,6 +373,232 @@ class TicketServiceTest {
 
         verify(ticketRepository).findById(ticketId);
         verify(ticketRepository, never()).delete(any(Ticket.class));
+        verify(ticketRepository, never()).save(any(Ticket.class));
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void customerShouldNotDeleteAnotherCustomerTicket() {
+        Long ticketId = 100L;
+        Long ownerId = 10L;
+        Long anotherCustomerId = 20L;
+
+        User owner = mock(User.class);
+        when(owner.getId()).thenReturn(ownerId);
+
+        Ticket ticket = new Ticket("Title", "Desc", "OPEN");
+        ticket.setCreatedBy(owner);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(
+                ForbiddenException.class,
+                () -> ticketService.deleteTicket(ticketId, anotherCustomerId, Role.CUSTOMER)
+        );
+
+        verify(ticketRepository, never()).save(any(Ticket.class));
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void adminShouldSoftDeleteTicketAndRecordAuditEvent() {
+        Long ticketId = 100L;
+        Long adminId = 1L;
+        Long customerId = 10L;
+
+        User admin = mock(User.class);
+        when(admin.getId()).thenReturn(adminId);
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+
+        Ticket ticket = new Ticket("Delete me", "Ticket to be soft-deleted", "OPEN");
+        ticket.setCreatedBy(customer);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ticketService.deleteTicket(ticketId, adminId, Role.ADMIN);
+
+        assertNotNull(ticket.getDeletedAt());
+        assertTrue(ticket.isDeleted());
+
+        verify(ticketRepository).save(ticket);
+        verify(ticketRepository, never()).delete(any(Ticket.class));
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(admin),
+                eq("DELETED"),
+                eq("OPEN"),
+                eq("DELETED"),
+                eq(ticket.getDeletedAt())
+        );
+    }
+
+    @Test
+    void agentShouldSoftDeleteAssignedTicketAndRecordAuditEvent() {
+        Long ticketId = 100L;
+        Long agentId = 30L;
+
+        User agent = mock(User.class);
+        when(agent.getId()).thenReturn(agentId);
+
+        Ticket ticket = new Ticket("Agent ticket", "Assigned ticket", "IN_PROGRESS");
+        ticket.setAssignedTo(agent);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(agentId)).thenReturn(Optional.of(agent));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ticketService.deleteTicket(ticketId, agentId, Role.AGENT);
+
+        assertNotNull(ticket.getDeletedAt());
+        assertTrue(ticket.isDeleted());
+
+        verify(ticketRepository).save(ticket);
+        verify(auditLogService).recordAction(
+                eq(ticket),
+                eq(agent),
+                eq("DELETED"),
+                eq("IN_PROGRESS"),
+                eq("DELETED"),
+                eq(ticket.getDeletedAt())
+        );
+    }
+
+    @Test
+    void agentShouldNotDeleteUnassignedTicket() {
+        Long ticketId = 100L;
+        Long assignedAgentId = 30L;
+        Long requestingAgentId = 40L;
+
+        User assignedAgent = mock(User.class);
+        when(assignedAgent.getId()).thenReturn(assignedAgentId);
+
+        Ticket ticket = new Ticket("Title", "Desc", "OPEN");
+        ticket.setAssignedTo(assignedAgent);
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(
+                ForbiddenException.class,
+                () -> ticketService.deleteTicket(ticketId, requestingAgentId, Role.AGENT)
+        );
+
+        verify(ticketRepository, never()).save(any(Ticket.class));
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void deleteTicketShouldFailWhenTicketAlreadySoftDeleted() {
+        Long ticketId = 100L;
+        Long adminId = 1L;
+
+        Ticket ticket = new Ticket("Already deleted", "Desc", "OPEN");
+        ticket.setDeletedAt(LocalDateTime.now().minusHours(1));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> ticketService.deleteTicket(ticketId, adminId, Role.ADMIN)
+        );
+
+        verify(ticketRepository, never()).save(any(Ticket.class));
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void deleteTicketShouldFailWhenTicketDoesNotExist() {
+        Long ticketId = 999L;
+        Long adminId = 1L;
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> ticketService.deleteTicket(ticketId, adminId, Role.ADMIN)
+        );
+
+        verify(ticketRepository, never()).save(any(Ticket.class));
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void getTicketByIdShouldFailWhenTicketIsSoftDeleted() {
+        Long ticketId = 100L;
+        Long adminId = 1L;
+
+        Ticket ticket = new Ticket("Deleted", "Desc", "OPEN");
+        ticket.setDeletedAt(LocalDateTime.now().minusHours(2));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> ticketService.getTicketById(ticketId, adminId, Role.ADMIN)
+        );
+    }
+
+    @Test
+    void updateTicketShouldFailWhenTicketIsSoftDeleted() {
+        Long ticketId = 100L;
+        Long adminId = 1L;
+
+        Ticket ticket = new Ticket("Deleted", "Desc", "OPEN");
+        ticket.setDeletedAt(LocalDateTime.now().minusHours(2));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        UpdateTicketRequest request = new UpdateTicketRequest(
+                "New Title", "New Desc", "IN_PROGRESS", TicketCategory.PAYMENT, TicketPriority.HIGH
+        );
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> ticketService.updateTicket(ticketId, request, adminId, Role.ADMIN)
+        );
+
+        verify(ticketRepository, never()).save(any(Ticket.class));
+    }
+
+    @Test
+    void assignTicketShouldFailWhenTicketIsSoftDeleted() {
+        Long ticketId = 100L;
+        Long adminId = 1L;
+
+        Ticket ticket = new Ticket("Deleted", "Desc", "OPEN");
+        ticket.setDeletedAt(LocalDateTime.now().minusHours(2));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> ticketService.assignTicket(ticketId, 30L, adminId, Role.ADMIN)
+        );
+
+        verify(ticketRepository, never()).save(any(Ticket.class));
+    }
+
+    @Test
+    void deleteTicketExceptionPropagation() {
+        Long ticketId = 100L;
+        Long adminId = 1L;
+
+        User admin = mock(User.class);
+        when(admin.getId()).thenReturn(adminId);
+
+        Ticket ticket = new Ticket("Title", "Desc", "OPEN");
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(ticketRepository.save(any(Ticket.class))).thenThrow(new RuntimeException("DB error"));
+
+        assertThrows(
+                RuntimeException.class,
+                () -> ticketService.deleteTicket(ticketId, adminId, Role.ADMIN)
+        );
     }
 
     @Test

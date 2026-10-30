@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionOperations;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.Set;
 
@@ -220,7 +221,8 @@ public class TicketService {
 
         // Build filters dynamically so any combination can be used.
         Specification<Ticket> specification =
-                TicketSpecifications.hasStatus(status)
+                TicketSpecifications.notDeleted()
+                        .and(TicketSpecifications.hasStatus(status))
                         .and(TicketSpecifications.hasPriority(priority))
                         .and(TicketSpecifications.hasCategory(category))
                         .and(TicketSpecifications.matchesSearch(search));
@@ -271,7 +273,7 @@ public class TicketService {
             Long currentUserId,
             Role currentUserRole
     ) {
-        Ticket ticket = findTicketById(ticketId);
+        Ticket ticket = findActiveTicketById(ticketId);
 
         validateTicketAccess(
                 ticket,
@@ -291,7 +293,7 @@ public class TicketService {
             Long currentUserId,
             Role currentUserRole
     ) {
-        Ticket ticket = findTicketById(ticketId);
+        Ticket ticket = findActiveTicketById(ticketId);
 
         validateTicketAccess(
                 ticket,
@@ -447,7 +449,7 @@ public class TicketService {
             );
         }
 
-        Ticket ticket = findTicketById(ticketId);
+        Ticket ticket = findActiveTicketById(ticketId);
         User agent = findUserById(agentId);
 
         if (agent.getRole() != Role.AGENT) {
@@ -498,7 +500,7 @@ public class TicketService {
             Long currentUserId,
             Role currentUserRole
     ) {
-        Ticket ticket = findTicketById(ticketId);
+        Ticket ticket = findActiveTicketById(ticketId);
 
         validateTicketAccess(
                 ticket,
@@ -513,19 +515,40 @@ public class TicketService {
             );
         }
 
-        ticketRepository.delete(ticket);
+        User actor = findUserById(currentUserId);
+        LocalDateTime deletionTime = LocalDateTime.now();
+
+        auditLogService.recordAction(
+                ticket,
+                actor,
+                "DELETED",
+                ticket.getStatus(),
+                "DELETED",
+                deletionTime
+        );
+
+        ticket.setDeletedAt(deletionTime);
+        ticketRepository.save(ticket);
     }
 
     /**
-     * Finds a ticket or throws a not-found exception.
+     * Finds an active, non-deleted ticket or throws a not-found exception.
      */
-    private Ticket findTicketById(Long ticketId) {
-        return ticketRepository.findById(ticketId)
+    private Ticket findActiveTicketById(Long ticketId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Ticket not found with ID: " + ticketId
                         )
                 );
+
+        if (ticket.getDeletedAt() != null) {
+            throw new ResourceNotFoundException(
+                    "Ticket not found with ID: " + ticketId
+            );
+        }
+
+        return ticket;
     }
 
     /**

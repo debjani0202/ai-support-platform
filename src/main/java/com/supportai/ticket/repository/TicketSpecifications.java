@@ -112,4 +112,9 @@ public final class TicketSpecifications {
                                 agentId
                         );
     }
+
+    public static Specification<Ticket> notDeleted() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.isNull(root.get("deletedAt"));
+    }
 }

@@ -17,6 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import com.supportai.audit.dto.TicketAuditLogResponse;
+import java.time.LocalDateTime;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -92,5 +94,21 @@ class TicketAuditLogControllerSecurityTest {
                                 .claim("role", "CUSTOMER"))
                                 .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void authenticatedUserCanGetAuditHistoryForSoftDeletedTicket() throws Exception {
+        TicketAuditLogResponse deletedEvent = new TicketAuditLogResponse(
+                10L, 1L, 3L, "admin", "DELETED", null, null, LocalDateTime.now()
+        );
+        when(auditLogService.getHistory(eq(1L), eq(3L), eq(Role.ADMIN)))
+                .thenReturn(List.of(deletedEvent));
+
+        mockMvc.perform(get("/api/tickets/1/audit-logs")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("3")
+                                .claim("role", "ADMIN"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk());
     }
 }

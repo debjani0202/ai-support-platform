@@ -63,6 +63,18 @@ public class TicketAuditLog {
         this.newValue = newValue;
     }
 
+    // Creates a new audit record with an explicit creation timestamp.
+    public TicketAuditLog(
+            Ticket ticket,
+            User actor,
+            String action,
+            String oldValue,
+            String newValue,
+            LocalDateTime createdAt) {
+        this(ticket, actor, action, oldValue, newValue);
+        this.createdAt = createdAt;
+    }
+
     // Set the timestamp before the entity is first saved.
     @PrePersist
     protected void onCreate() {

@@ -1,6 +1,7 @@
 package com.supportai.ticket.controller;
 
 import com.supportai.exception.GlobalExceptionHandler;
+import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.security.SecurityConfig;
 import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
@@ -248,5 +249,31 @@ class TicketControllerSecurityTest {
                                 }
                                 """))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void deleteTicket_returns404WhenTicketAlreadyDeleted() throws Exception {
+        org.mockito.Mockito.doThrow(new ResourceNotFoundException("Ticket not found with ID: 1"))
+                .when(ticketService).deleteTicket(eq(1L), eq(99L), eq(Role.ADMIN));
+
+        mockMvc.perform(delete("/api/tickets/1")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("99")
+                                .claim("role", "ADMIN"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getTicketById_returns404WhenTicketSoftDeleted() throws Exception {
+        when(ticketService.getTicketById(eq(1L), eq(99L), eq(Role.ADMIN)))
+                .thenThrow(new ResourceNotFoundException("Ticket not found with ID: 1"));
+
+        mockMvc.perform(get("/api/tickets/1")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("99")
+                                .claim("role", "ADMIN"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isNotFound());
     }
 }

@@ -274,4 +274,167 @@ class TicketAuditLogServiceTest {
         assertNotNull(idOrder);
         assertTrue(idOrder.isAscending());
     }
+
+    @Test
+    void recordAction_withExplicitTimestamp_savesAuditRecordWithExactTimestamp() {
+        Ticket ticket = mock(Ticket.class);
+        User actor = mock(User.class);
+        LocalDateTime explicitTime = LocalDateTime.of(2026, 10, 30, 12, 0, 0);
+
+        when(auditLogRepository.save(any(TicketAuditLog.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        TicketAuditLog result = auditLogService.recordAction(
+                ticket, actor, "DELETED", "OPEN", "DELETED", explicitTime
+        );
+
+        assertNotNull(result);
+        assertEquals("DELETED", result.getAction());
+        assertEquals(explicitTime, result.getCreatedAt());
+
+        ArgumentCaptor<TicketAuditLog> captor = ArgumentCaptor.forClass(TicketAuditLog.class);
+        verify(auditLogRepository).save(captor.capture());
+        assertEquals(explicitTime, captor.getValue().getCreatedAt());
+    }
+
+    @Test
+    void getHistory_adminCanRetrieveHistoryForSoftDeletedTicket() {
+        Long ticketId = 1L;
+        Long adminId = 99L;
+
+        Ticket ticket = mock(Ticket.class);
+        when(ticket.getId()).thenReturn(ticketId);
+        when(ticket.getDeletedAt()).thenReturn(LocalDateTime.now().minusHours(1));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        TicketAuditLog deletedLog = mock(TicketAuditLog.class);
+        when(deletedLog.getId()).thenReturn(200L);
+        when(deletedLog.getTicket()).thenReturn(ticket);
+        User admin = mock(User.class);
+        when(admin.getId()).thenReturn(adminId);
+        when(admin.getName()).thenReturn("Admin User");
+        when(deletedLog.getActor()).thenReturn(admin);
+        when(deletedLog.getAction()).thenReturn("DELETED");
+        when(deletedLog.getOldValue()).thenReturn("OPEN");
+        when(deletedLog.getNewValue()).thenReturn("DELETED");
+        when(deletedLog.getCreatedAt()).thenReturn(LocalDateTime.now());
+
+        when(auditLogRepository.findByTicketId(eq(ticketId), any(Sort.class)))
+                .thenReturn(List.of(deletedLog));
+
+        List<TicketAuditLogResponse> history = auditLogService.getHistory(ticketId, adminId, Role.ADMIN);
+
+        assertNotNull(history);
+        assertEquals(1, history.size());
+        assertEquals("DELETED", history.get(0).action());
+    }
+
+    @Test
+    void getHistory_customerCanRetrieveHistoryForOwnSoftDeletedTicket() {
+        Long ticketId = 1L;
+        Long customerId = 10L;
+
+        User customer = mock(User.class);
+        when(customer.getId()).thenReturn(customerId);
+        when(customer.getName()).thenReturn("Alice Customer");
+
+        Ticket ticket = mock(Ticket.class);
+        when(ticket.getId()).thenReturn(ticketId);
+        when(ticket.getCreatedBy()).thenReturn(customer);
+        when(ticket.getDeletedAt()).thenReturn(LocalDateTime.now().minusHours(1));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        TicketAuditLog logEntry = mock(TicketAuditLog.class);
+        when(logEntry.getId()).thenReturn(101L);
+        when(logEntry.getTicket()).thenReturn(ticket);
+        when(logEntry.getActor()).thenReturn(customer);
+        when(logEntry.getAction()).thenReturn("CREATED");
+        when(logEntry.getCreatedAt()).thenReturn(LocalDateTime.now());
+
+        when(auditLogRepository.findByTicketId(eq(ticketId), any(Sort.class)))
+                .thenReturn(List.of(logEntry));
+
+        List<TicketAuditLogResponse> history = auditLogService.getHistory(ticketId, customerId, Role.CUSTOMER);
+
+        assertNotNull(history);
+        assertEquals(1, history.size());
+        assertEquals("CREATED", history.get(0).action());
+    }
+
+    @Test
+    void getHistory_customerDeniedAccessToAnotherCustomerSoftDeletedTicket() {
+        Long ticketId = 1L;
+        Long ownerId = 10L;
+        Long requesterId = 20L;
+
+        User owner = mock(User.class);
+        when(owner.getId()).thenReturn(ownerId);
+
+        Ticket ticket = mock(Ticket.class);
+        when(ticket.getCreatedBy()).thenReturn(owner);
+        when(ticket.getDeletedAt()).thenReturn(LocalDateTime.now().minusHours(1));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(
+                ForbiddenException.class,
+                () -> auditLogService.getHistory(ticketId, requesterId, Role.CUSTOMER)
+        );
+
+        verify(auditLogRepository, never()).findByTicketId(any(), any());
+    }
+
+    @Test
+    void getHistory_agentCanRetrieveHistoryForAssignedSoftDeletedTicket() {
+        Long ticketId = 1L;
+        Long agentId = 30L;
+
+        User agent = mock(User.class);
+        when(agent.getId()).thenReturn(agentId);
+        when(agent.getName()).thenReturn("Bob Agent");
+
+        Ticket ticket = mock(Ticket.class);
+        when(ticket.getId()).thenReturn(ticketId);
+        when(ticket.getAssignedTo()).thenReturn(agent);
+        when(ticket.getDeletedAt()).thenReturn(LocalDateTime.now().minusHours(1));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        TicketAuditLog logEntry = mock(TicketAuditLog.class);
+        when(logEntry.getId()).thenReturn(102L);
+        when(logEntry.getTicket()).thenReturn(ticket);
+        when(logEntry.getActor()).thenReturn(agent);
+        when(logEntry.getAction()).thenReturn("DELETED");
+        when(logEntry.getCreatedAt()).thenReturn(LocalDateTime.now());
+
+        when(auditLogRepository.findByTicketId(eq(ticketId), any(Sort.class)))
+                .thenReturn(List.of(logEntry));
+
+        List<TicketAuditLogResponse> history = auditLogService.getHistory(ticketId, agentId, Role.AGENT);
+
+        assertNotNull(history);
+        assertEquals(1, history.size());
+        assertEquals("DELETED", history.get(0).action());
+    }
+
+    @Test
+    void getHistory_agentDeniedAccessToUnassignedSoftDeletedTicket() {
+        Long ticketId = 1L;
+        Long requestingAgentId = 40L;
+
+        Ticket ticket = mock(Ticket.class);
+        when(ticket.getAssignedTo()).thenReturn(null);
+        when(ticket.getDeletedAt()).thenReturn(LocalDateTime.now().minusHours(1));
+
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(
+                ForbiddenException.class,
+                () -> auditLogService.getHistory(ticketId, requestingAgentId, Role.AGENT)
+        );
+
+        verify(auditLogRepository, never()).findByTicketId(any(), any());
+    }
 }

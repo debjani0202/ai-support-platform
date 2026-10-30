@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -58,14 +59,44 @@ public class TicketAuditLogService {
             String action,
             String oldValue,
             String newValue) {
+        return recordAction(ticket, actor, action, oldValue, newValue, null);
+    }
 
-        TicketAuditLog auditLog = new TicketAuditLog(
-                ticket,
-                actor,
-                action,
-                oldValue,
-                newValue
-        );
+    /**
+     * Records an action performed on a ticket with an explicit timestamp.
+     *
+     * @param ticket the ticket affected by the action
+     * @param actor the user who performed the action
+     * @param action the action type, such as DELETED
+     * @param oldValue the previous value, if applicable
+     * @param newValue the new value, if applicable
+     * @param timestamp the explicit timestamp to record
+     * @return the saved audit record
+     */
+    public TicketAuditLog recordAction(
+            Ticket ticket,
+            User actor,
+            String action,
+            String oldValue,
+            String newValue,
+            LocalDateTime timestamp) {
+
+        TicketAuditLog auditLog = timestamp != null
+                ? new TicketAuditLog(
+                        ticket,
+                        actor,
+                        action,
+                        oldValue,
+                        newValue,
+                        timestamp
+                )
+                : new TicketAuditLog(
+                        ticket,
+                        actor,
+                        action,
+                        oldValue,
+                        newValue
+                );
 
         return auditLogRepository.save(auditLog);
     }

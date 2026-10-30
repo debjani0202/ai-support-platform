@@ -116,9 +116,16 @@ public TicketCommentService(
     }
 
     private Ticket findTicketById(Long ticketId) {
-        return ticketRepository.findById(ticketId)
+        Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Ticket not found with ID: " + ticketId));
+
+        if (ticket.getDeletedAt() != null) {
+            throw new ResourceNotFoundException(
+                    "Ticket not found with ID: " + ticketId);
+        }
+
+        return ticket;
     }
 
     private void validateTicketAccess(

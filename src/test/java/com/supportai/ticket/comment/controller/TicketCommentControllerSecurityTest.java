@@ -1,6 +1,7 @@
 package com.supportai.ticket.comment.controller;
 
 import com.supportai.exception.GlobalExceptionHandler;
+import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.security.SecurityConfig;
 import com.supportai.ticket.comment.dto.CommentResponse;
 import com.supportai.ticket.comment.dto.CreateCommentRequest;
@@ -93,5 +94,37 @@ class TicketCommentControllerSecurityTest {
                                 }
                                 """))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void addComment_returns404WhenTicketSoftDeleted() throws Exception {
+        when(commentService.addComment(eq(1L), any(CreateCommentRequest.class), eq(1L), eq(Role.CUSTOMER)))
+                .thenThrow(new ResourceNotFoundException("Ticket not found with ID: 1"));
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "content": "Valid comment content"
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getComments_returns404WhenTicketSoftDeleted() throws Exception {
+        when(commentService.getComments(eq(1L), eq(1L), eq(Role.CUSTOMER)))
+                .thenThrow(new ResourceNotFoundException("Ticket not found with ID: 1"));
+
+        mockMvc.perform(get("/api/tickets/1/comments")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+                .andExpect(status().isNotFound());
     }
 }
