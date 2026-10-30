@@ -402,22 +402,22 @@ export function CustomerDashboardView({
         >
           {/* Subtle Ambient Sparkle Stars in Background */}
           <div
-            className="absolute top-6 left-1/3 w-3 h-3 text-indigo-300 opacity-60 pointer-events-none"
+            className="absolute top-6 left-1/3 text-indigo-300 opacity-60 pointer-events-none"
             aria-hidden="true"
           >
-            ✦
+            <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div
-            className="absolute bottom-8 left-1/2 w-4 h-4 text-purple-300 opacity-50 pointer-events-none"
+            className="absolute bottom-8 left-1/2 text-purple-300 opacity-50 pointer-events-none"
             aria-hidden="true"
           >
-            ✦
+            <Sparkles className="w-4 h-4" />
           </div>
           <div
-            className="absolute top-12 right-1/4 w-3.5 h-3.5 text-blue-300 opacity-50 pointer-events-none"
+            className="absolute top-12 right-1/4 text-blue-300 opacity-50 pointer-events-none"
             aria-hidden="true"
           >
-            ✦
+            <Sparkles className="w-3.5 h-3.5" />
           </div>
 
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -956,7 +956,7 @@ export function CustomerDashboardView({
             </div>
           )}
 
-          {/* Populated Table for Desktop and Tablet (≥768px) */}
+          {/* Populated Table for Desktop and Tablet (>=768px) */}
           {!isLoadingTickets && !ticketsError && recentTickets.length > 0 && (
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600">
@@ -1068,7 +1068,7 @@ export function CustomerDashboardView({
         </section>
 
         {/* ======================================================================= */}
-        {/* E. “SUPPORT MADE SMARTER WITH AI” SECTION (WORKFLOW & FEATURES)         */}
+        {/* E. "SUPPORT MADE SMARTER WITH AI" SECTION (WORKFLOW & FEATURES)         */}
         {/* ======================================================================= */}
         <section
           aria-labelledby="workflow-heading"
@@ -1256,14 +1256,11 @@ export function CustomerDashboardView({
             </nav>
           </div>
 
-          {/* Copyright & Compliance */}
-          <div className="pt-6 text-center sm:text-left text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+          {/* Copyright */}
+          <div className="pt-6 text-center sm:text-left text-xs text-slate-400">
             <p>
               &copy; {new Date().getFullYear()} AI Support Platform. All rights
               reserved.
-            </p>
-            <p className="text-[11px] text-slate-400">
-              Authenticated Session &bull; Customer Portal
             </p>
           </div>
         </div>

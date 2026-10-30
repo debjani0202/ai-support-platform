@@ -5,6 +5,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 
 // Lazy-loaded pages
+const LandingPage = lazy(() =>
+  import('@/pages/public/LandingPage').then((module) => ({
+    default: module.LandingPage,
+  })),
+);
+
 const LoginPage = lazy(() =>
   import('@/pages/auth/LoginPage').then((module) => ({
     default: module.LoginPage,
@@ -105,8 +111,8 @@ export function AppRoutes() {
       }
     >
       <Routes>
-        {/* Root redirect */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Public Landing Page */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* Public Guest Routes */}
         <Route
