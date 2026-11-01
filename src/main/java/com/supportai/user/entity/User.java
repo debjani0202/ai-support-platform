@@ -95,9 +95,11 @@ public class User {
         return updatedAt;
     }
 
-    
-public void setPassword(String password) {
-    this.password = password;
-}
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
+    public void setRole(Role role) {
+        this.role = role;
+    }
 }

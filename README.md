@@ -68,11 +68,17 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/ticket/repository/TicketRepository.java`
 - `src/main/java/com/supportai/ticket/repository/TicketSpecifications.java`
 - `src/main/java/com/supportai/ticket/service/TicketService.java`
+- `src/main/java/com/supportai/user/cli/AdminProvisioningRunner.java`
 - `src/main/java/com/supportai/user/controller/UserController.java`
+- `src/main/java/com/supportai/user/dto/AdminCreateUserRequest.java`
 - `src/main/java/com/supportai/user/dto/AgentResponse.java`
+- `src/main/java/com/supportai/user/dto/UpdateUserRoleRequest.java`
+- `src/main/java/com/supportai/user/dto/UserProfileResponse.java`
+- `src/main/java/com/supportai/user/dto/UserSummaryResponse.java`
 - `src/main/java/com/supportai/user/entity/Role.java`
 - `src/main/java/com/supportai/user/entity/User.java`
 - `src/main/java/com/supportai/user/repository/UserRepository.java`
+- `src/main/java/com/supportai/user/repository/UserSpecifications.java`
 - `src/main/java/com/supportai/user/service/UserService.java`
 
 ### Gradle Dependencies
@@ -106,9 +112,12 @@ The project focuses on secure authentication, ticket management, database persis
 - `GET` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
 - `GET` `/api/tickets` | `TicketController`
 - `GET` `/api/users/agents` | `UserController`
+- `GET` `/api/users/me` | `UserController`
+- `GET` `/api/users` | `UserController`
 - `PATCH` `/api/notifications/read-all` | `NotificationController`
 - `PATCH` `/api/notifications/{id}/read` | `NotificationController`
 - `PATCH` `/api/tickets/{id}/assign` | `TicketController`
+- `PATCH` `/api/users/{id}/role` | `UserController`
 - `POST` `/api/auth/change-password` | `AuthController`
 - `POST` `/api/auth/forgot-password` | `AuthController`
 - `POST` `/api/auth/login` | `AuthController`
@@ -116,11 +125,12 @@ The project focuses on secure authentication, ticket management, database persis
 - `POST` `/api/auth/reset-password` | `AuthController`
 - `POST` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
 - `POST` `/api/tickets` | `TicketController`
+- `POST` `/api/users` | `UserController`
 - `PUT` `/api/tickets/{id}` | `TicketController`
 
 ### Test Results
 
-**Available test report totals:** 207 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 295 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview
