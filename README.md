@@ -304,8 +304,18 @@ To run the entire application stack (PostgreSQL 17 and Spring Boot) using Docker
 In PowerShell, ensure your database password and JWT secret are configured in the current session:
 
 ```powershell
-$env:DB_PASSWORD = "YourStrongDatabasePassword"
-$env:JWT_SECRET = "YourBase64Encoded256BitOrGreaterSecretKey"
+
+# Enter the database password
+$securePassword = Read-Host "Database password" -AsSecureString
+$env:DB_PASSWORD = [System.Net.NetworkCredential]::new("", $securePassword).Password
+
+# Generate a secure JWT secret
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+$rng.Dispose()
+Remove-Variable bytes, rng, securePassword
 ```
 
 > **Note:** The Compose PostgreSQL service defaults to host port `5435` (`${POSTGRES_PORT:-5435}:5432`) to avoid port collisions with the existing standalone container `ai-support-postgres` on host port `5434`. You can customize this port by setting `$env:POSTGRES_PORT`.
