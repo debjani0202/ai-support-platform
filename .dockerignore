@@ -1,0 +1,32 @@
+.git/
+.gradle/
+build/
+bin/
+out/
+.idea/
+*.iml
+.vscode/
+
+# Frontend (separate Node/Vite application)
+frontend/
+
+# Secrets and environment configurations
+.env
+.env.*
+application-local.*
+
+# Application and diagnostic logs
+*.log
+app.log
+app-startup.log
+gradle-test-debug.log
+
+# Temporary and editor backup files
+*.bak
+*.bom-backup
+*.backup-before-*
+*.before-*
+
+# Documentation and build script backups
+README.md.backup*
+build.gradle.kts.backup*

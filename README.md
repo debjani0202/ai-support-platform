@@ -295,6 +295,48 @@ Test results are available under:
 build/reports/tests/test/index.html
 ```
 
+## Run with Docker Compose
+
+To run the entire application stack (PostgreSQL 17 and Spring Boot) using Docker Compose:
+
+### 1. Configure required environment variables
+
+In PowerShell, ensure your database password and JWT secret are configured in the current session:
+
+```powershell
+$env:DB_PASSWORD = "YourStrongDatabasePassword"
+$env:JWT_SECRET = "YourBase64Encoded256BitOrGreaterSecretKey"
+```
+
+> **Note:** The Compose PostgreSQL service defaults to host port `5435` (`${POSTGRES_PORT:-5435}:5432`) to avoid port collisions with the existing standalone container `ai-support-postgres` on host port `5434`. You can customize this port by setting `$env:POSTGRES_PORT`.
+
+### 2. Build and start the services
+
+```powershell
+docker compose up -d --build
+```
+
+Docker Compose builds the multi-stage Spring Boot image using Java 25, starts the PostgreSQL database, waits for the database health check (`pg_isready`) to succeed, and then starts the Spring Boot backend with Flyway applying all pending migrations.
+
+### 3. Verify health and inspect logs
+
+```powershell
+# Check application health
+Invoke-RestMethod http://localhost:8080/api/health
+Invoke-RestMethod http://localhost:8080/actuator/health
+
+# View live container logs
+docker compose logs -f app
+```
+
+### 4. Stop the services
+
+```powershell
+docker compose down
+```
+
+> **Caution:** Do not use `docker compose down -v` unless you explicitly intend to delete the persistent PostgreSQL volume (`postgres_data`).
+
 ## Update Generated Documentation
 
 Regenerate the automatically maintained README section with:
