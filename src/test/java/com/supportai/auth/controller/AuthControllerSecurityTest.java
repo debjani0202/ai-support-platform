@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -274,5 +275,28 @@ class AuthControllerSecurityTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void refreshToken_unauthenticated_returnsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh-token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshToken_authenticated_returnsOkWithLoginResponse() throws Exception {
+        LoginResponse response = new LoginResponse(
+                10L, "Customer Name", "customer@support.ai",
+                Role.AGENT, "new-jwt-token", "Bearer"
+        );
+        when(authService.refreshToken(10L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/refresh-token")
+                        .with(jwt().jwt(j -> j.subject("10").claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(10))
+                .andExpect(jsonPath("$.role").value("AGENT"))
+                .andExpect(jsonPath("$.accessToken").value("new-jwt-token"));
     }
 }

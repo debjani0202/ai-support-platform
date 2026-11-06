@@ -140,6 +140,27 @@ public class AuthService {
         user.setPassword(encodedPassword);
     }
 
+    @Transactional(readOnly = true)
+    public LoginResponse refreshToken(Long currentUserId) {
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() ->
+                        new com.supportai.exception.ResourceNotFoundException(
+                                "User not found with id: " + currentUserId
+                        )
+                );
+
+        String accessToken = jwtService.generateToken(user);
+
+        return new LoginResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                accessToken,
+                "Bearer"
+        );
+    }
+
     private AuthResponse toResponse(User user) {
 
         return new AuthResponse(

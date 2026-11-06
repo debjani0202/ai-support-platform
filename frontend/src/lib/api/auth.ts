@@ -67,3 +67,12 @@ export async function resetPasswordApi(data: ResetPasswordRequest): Promise<void
   await apiClient.post<void>('/auth/reset-password', data);
 }
 
+/**
+ * Refreshes current user's JWT token to pick up updated roles/permissions.
+ * Matches com.supportai.auth.controller.AuthController#refreshToken
+ */
+export async function refreshTokenApi(): Promise<LoginResponse> {
+  const response = await apiClient.post<LoginResponse>('/auth/refresh-token');
+  return response.data;
+}
+

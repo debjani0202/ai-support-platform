@@ -18,6 +18,7 @@ describe('LandingPage', () => {
     isAuthenticated: false,
     login: vi.fn(),
     logout: vi.fn(),
+    refreshSession: vi.fn(),
   };
 
   const authContextValue: AuthContextType = {
@@ -32,6 +33,7 @@ describe('LandingPage', () => {
     isAuthenticated: true,
     login: vi.fn(),
     logout: vi.fn(),
+    refreshSession: vi.fn(),
   };
 
   const renderLandingPage = (authValue: AuthContextType = unauthContextValue) =>

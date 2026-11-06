@@ -71,6 +71,18 @@ const ChangePasswordPage = lazy(() =>
   })),
 );
 
+const ProfilePage = lazy(() =>
+  import('@/pages/profile/ProfilePage').then((module) => ({
+    default: module.ProfilePage,
+  })),
+);
+
+const AgentRequestsPage = lazy(() =>
+  import('@/pages/admin/AgentRequestsPage').then((module) => ({
+    default: module.AgentRequestsPage,
+  })),
+);
+
 const ForbiddenPage = lazy(() =>
   import('@/pages/error/ForbiddenPage').then((module) => ({
     default: module.ForbiddenPage,
@@ -94,6 +106,14 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (user?.role !== 'ADMIN') {
+    return <Navigate to="/403" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -156,6 +176,15 @@ export function AppRoutes() {
           <Route path="/tickets/:id" element={<TicketDetailPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route
+            path="/admin/agent-requests"
+            element={
+              <AdminRoute>
+                <AgentRequestsPage />
+              </AdminRoute>
+            }
+          />
         </Route>
 
         {/* Error Routes */}

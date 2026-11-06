@@ -69,16 +69,25 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/ticket/repository/TicketSpecifications.java`
 - `src/main/java/com/supportai/ticket/service/TicketService.java`
 - `src/main/java/com/supportai/user/cli/AdminProvisioningRunner.java`
+- `src/main/java/com/supportai/user/controller/AgentRequestController.java`
 - `src/main/java/com/supportai/user/controller/UserController.java`
 - `src/main/java/com/supportai/user/dto/AdminCreateUserRequest.java`
+- `src/main/java/com/supportai/user/dto/AgentRequestResponse.java`
 - `src/main/java/com/supportai/user/dto/AgentResponse.java`
+- `src/main/java/com/supportai/user/dto/ApproveAgentRequestDto.java`
+- `src/main/java/com/supportai/user/dto/CreateAgentRequestDto.java`
+- `src/main/java/com/supportai/user/dto/RejectAgentRequestDto.java`
 - `src/main/java/com/supportai/user/dto/UpdateUserRoleRequest.java`
 - `src/main/java/com/supportai/user/dto/UserProfileResponse.java`
 - `src/main/java/com/supportai/user/dto/UserSummaryResponse.java`
+- `src/main/java/com/supportai/user/entity/AgentRequest.java`
+- `src/main/java/com/supportai/user/entity/AgentRequestStatus.java`
 - `src/main/java/com/supportai/user/entity/Role.java`
 - `src/main/java/com/supportai/user/entity/User.java`
+- `src/main/java/com/supportai/user/repository/AgentRequestRepository.java`
 - `src/main/java/com/supportai/user/repository/UserRepository.java`
 - `src/main/java/com/supportai/user/repository/UserSpecifications.java`
+- `src/main/java/com/supportai/user/service/AgentRequestService.java`
 - `src/main/java/com/supportai/user/service/UserService.java`
 
 ### Gradle Dependencies
@@ -103,6 +112,8 @@ The project focuses on secure authentication, ticket management, database persis
 ### Discovered API Endpoints
 
 - `DELETE` `/api/tickets/{id}` | `TicketController`
+- `GET` `/api/agent-requests/me` | `AgentRequestController`
+- `GET` `/api/agent-requests` | `AgentRequestController`
 - `GET` `/api/auth/verify-reset-token` | `AuthController`
 - `GET` `/api/health` | `HealthController`
 - `GET` `/api/notifications/unread-count` | `NotificationController`
@@ -114,13 +125,17 @@ The project focuses on secure authentication, ticket management, database persis
 - `GET` `/api/users/agents` | `UserController`
 - `GET` `/api/users/me` | `UserController`
 - `GET` `/api/users` | `UserController`
+- `PATCH` `/api/agent-requests/{id}/approve` | `AgentRequestController`
+- `PATCH` `/api/agent-requests/{id}/reject` | `AgentRequestController`
 - `PATCH` `/api/notifications/read-all` | `NotificationController`
 - `PATCH` `/api/notifications/{id}/read` | `NotificationController`
 - `PATCH` `/api/tickets/{id}/assign` | `TicketController`
 - `PATCH` `/api/users/{id}/role` | `UserController`
+- `POST` `/api/agent-requests` | `AgentRequestController`
 - `POST` `/api/auth/change-password` | `AuthController`
 - `POST` `/api/auth/forgot-password` | `AuthController`
 - `POST` `/api/auth/login` | `AuthController`
+- `POST` `/api/auth/refresh-token` | `AuthController`
 - `POST` `/api/auth/register` | `AuthController`
 - `POST` `/api/auth/reset-password` | `AuthController`
 - `POST` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
@@ -130,7 +145,7 @@ The project focuses on secure authentication, ticket management, database persis
 
 ### Test Results
 
-**Available test report totals:** 295 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 317 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview

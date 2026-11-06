@@ -48,6 +48,18 @@ public class SecurityConfig {
                         .permitAll()
 
                         // Defense-in-depth: endpoint-level role restrictions
+                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh-token")
+                                .authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/agent-requests")
+                                .hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/api/agent-requests/me")
+                                .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/agent-requests/**")
+                                .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/agent-requests/*/approve")
+                                .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/agent-requests/*/reject")
+                                .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/users/agents")
                                 .hasAnyRole("ADMIN", "AGENT")
                         .requestMatchers(HttpMethod.GET, "/api/users/me")

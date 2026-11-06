@@ -45,7 +45,7 @@ describe('CustomerDashboardView', () => {
 
     expect(screen.getAllByText('AI Support Platform').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Tickets').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('My Tickets').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Submit Ticket').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Debjani Mondal').length).toBeGreaterThanOrEqual(1);
   });
@@ -221,5 +221,80 @@ describe('CustomerDashboardView', () => {
     expect(screen.getByText(new RegExp(currentYear))).toBeDefined();
     expect(screen.getByText(/All rights reserved/i)).toBeDefined();
     expect(screen.getAllByText('Notifications').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders role-specific navigation and action cards for AGENT role', () => {
+    const mockAgent = {
+      name: 'Agent Sarah',
+      email: 'agent.sarah@support.ai',
+      role: 'AGENT',
+      userId: 55,
+    };
+
+    render(
+      <MemoryRouter>
+        <CustomerDashboardView
+          user={mockAgent}
+          isPreview={true}
+          initialStats={{ total: 5, open: 2, inProgress: 2, resolved: 1 }}
+        />
+      </MemoryRouter>
+    );
+
+    // Agent navigation should show "Assigned Tickets" and "Submit Ticket"
+    expect(screen.getAllByText('Assigned Tickets').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Submit Ticket').length).toBeGreaterThanOrEqual(1);
+
+    // Agent quick-action card should show "View Assigned Tickets" (header & button)
+    expect(screen.getAllByText('View Assigned Tickets').length).toBe(2);
+    expect(screen.getByText('Submit a New Ticket')).toBeDefined();
+  });
+
+  it('renders role-specific navigation and hides ticket creation actions for ADMIN role', () => {
+    const mockAdmin = {
+      name: 'Admin Chief',
+      email: 'admin@support.ai',
+      role: 'ADMIN',
+      userId: 1,
+    };
+
+    render(
+      <MemoryRouter>
+        <CustomerDashboardView
+          user={mockAdmin}
+          isPreview={true}
+          initialStats={{ total: 20, open: 8, inProgress: 5, resolved: 7 }}
+        />
+      </MemoryRouter>
+    );
+
+    // Admin navigation should show "All Tickets" and "Agent Requests"
+    expect(screen.getAllByText('All Tickets').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Agent Requests').length).toBeGreaterThanOrEqual(1);
+
+    // Admin should NOT see "Submit Ticket" in nav or "Submit a New Ticket" action card
+    expect(screen.queryByText('Submit Ticket')).toBeNull();
+    expect(screen.queryByText('Submit a New Ticket')).toBeNull();
+
+    // Admin quick-action card should show "View All Tickets" (header & button)
+    expect(screen.getAllByText('View All Tickets').length).toBe(2);
+  });
+
+  it('renders Profile and Change Password links in mobile navigation menu', () => {
+    render(
+      <MemoryRouter>
+        <CustomerDashboardView
+          user={mockUser}
+          isPreview={true}
+          initialStats={{ total: 1, open: 1, inProgress: 0, resolved: 0 }}
+        />
+      </MemoryRouter>
+    );
+
+    const toggleButton = screen.getByLabelText('Toggle navigation menu');
+    fireEvent.click(toggleButton);
+
+    expect(screen.getByText('Profile')).toBeDefined();
+    expect(screen.getByText('Change Password')).toBeDefined();
   });
 });

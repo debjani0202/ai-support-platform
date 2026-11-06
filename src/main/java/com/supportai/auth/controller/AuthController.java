@@ -52,6 +52,12 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/refresh-token")
+    public LoginResponse refreshToken(Authentication authentication) {
+        Long userId = Long.valueOf(authentication.getName());
+        return authService.refreshToken(userId);
+    }
+
     @PostMapping("/change-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changePassword(

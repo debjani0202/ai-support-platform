@@ -3,7 +3,7 @@
  */
 export interface NotificationResponse {
   id: number;
-  ticketId: number;
+  ticketId: number | null;
   type: string;
   message: string;
   read: boolean;

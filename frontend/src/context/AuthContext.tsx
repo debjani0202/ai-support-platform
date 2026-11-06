@@ -3,6 +3,7 @@ import { AuthContext } from './auth-context';
 import type { AuthUser, LoginResponse, StoredSession } from '@/types/auth.types';
 import { SESSION_STORAGE_KEY, clearStoredSession } from '@/lib/api/client';
 import { isTokenExpired } from '@/lib/utils/jwt';
+import { refreshTokenApi } from '@/lib/api/auth';
 
 export interface AuthContextType {
   isInitializing: boolean;
@@ -11,6 +12,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   login: (response: LoginResponse) => void;
   logout: () => void;
+  refreshSession: () => Promise<void>;
 }
 
 
@@ -49,6 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     setToken(response.accessToken);
   }, []);
+
+  // Refreshes token with backend to update role/claims immediately
+  const refreshSession = useCallback(async () => {
+    const response = await refreshTokenApi();
+    login(response);
+  }, [login]);
 
   // Initial session restoration with defensive expiry checks
   useEffect(() => {
@@ -95,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!token && !!user,
         login,
         logout,
+        refreshSession,
       }}
     >
       {children}

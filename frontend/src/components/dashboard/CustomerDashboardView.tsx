@@ -24,6 +24,8 @@ import {
   Shield,
   Bot,
   MessageSquare,
+  User,
+  UserCheck,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import { StatusBadge } from '@/components/badges/StatusBadge';
@@ -161,6 +163,12 @@ export function CustomerDashboardView({
 
   const displayName = user.name?.trim() || 'Customer';
   const userInitial = displayName.charAt(0).toUpperCase();
+  const ticketsLabel =
+    user.role === 'AGENT'
+      ? 'Assigned Tickets'
+      : user.role === 'ADMIN'
+      ? 'All Tickets'
+      : 'My Tickets';
 
   return (
     <div className="min-h-screen bg-slate-50/60 flex flex-col font-sans text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-900">
@@ -211,21 +219,38 @@ export function CustomerDashboardView({
               }`}
             >
               <Ticket className="w-4 h-4 text-purple-600" />
-              <span>Tickets</span>
+              <span>{ticketsLabel}</span>
             </Link>
 
-            {/* Submit Ticket Pill */}
-            <Link
-              to="/tickets/new"
-              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all ${
-                location.pathname === '/tickets/new'
-                  ? 'bg-blue-100/80 text-blue-700 shadow-xs'
-                  : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50/60'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4 text-purple-600" />
-              <span>Submit Ticket</span>
-            </Link>
+            {/* Submit Ticket Pill (Visible for CUSTOMER & AGENT, hidden for ADMIN) */}
+            {user.role !== 'ADMIN' && (
+              <Link
+                to="/tickets/new"
+                className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                  location.pathname === '/tickets/new'
+                    ? 'bg-blue-100/80 text-blue-700 shadow-xs'
+                    : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50/60'
+                }`}
+              >
+                <PlusCircle className="w-4 h-4 text-purple-600" />
+                <span>Submit Ticket</span>
+              </Link>
+            )}
+
+            {/* Agent Requests Pill (Visible for ADMIN only) */}
+            {user.role === 'ADMIN' && (
+              <Link
+                to="/admin/agent-requests"
+                className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                  location.pathname === '/admin/agent-requests'
+                    ? 'bg-blue-100/80 text-blue-700 shadow-xs'
+                    : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50/60'
+                }`}
+              >
+                <UserCheck className="w-4 h-4 text-purple-600" />
+                <span>Agent Requests</span>
+              </Link>
+            )}
           </nav>
 
           {/* Right: Notification Bell & Profile Dropdown */}
@@ -268,6 +293,16 @@ export function CustomerDashboardView({
                       {user.role || 'CUSTOMER'}
                     </span>
                   </div>
+
+                  <DropdownMenu.Item asChild>
+                    <Link
+                      to="/profile"
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded-lg hover:bg-slate-100 hover:text-slate-900 cursor-pointer outline-none transition-colors"
+                    >
+                      <User className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenu.Item>
 
                   <DropdownMenu.Item asChild>
                     <Link
@@ -354,17 +389,37 @@ export function CustomerDashboardView({
                 }`}
               >
                 <Ticket className="w-4 h-4 text-purple-600" />
-                <span>Tickets</span>
+                <span>{ticketsLabel}</span>
               </Link>
-              <Link
-                to="/tickets/new"
-                onClick={() => setMobileNavOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-purple-700 hover:bg-purple-50"
-              >
-                <PlusCircle className="w-4 h-4 text-purple-600" />
-                <span>Submit Ticket</span>
-              </Link>
+              {user.role !== 'ADMIN' && (
+                <Link
+                  to="/tickets/new"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-purple-700 hover:bg-purple-50"
+                >
+                  <PlusCircle className="w-4 h-4 text-purple-600" />
+                  <span>Submit Ticket</span>
+                </Link>
+              )}
+              {user.role === 'ADMIN' && (
+                <Link
+                  to="/admin/agent-requests"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-purple-700 hover:bg-purple-50"
+                >
+                  <UserCheck className="w-4 h-4 text-purple-600" />
+                  <span>Agent Requests</span>
+                </Link>
+              )}
               <div className="pt-2 border-t border-slate-100" />
+              <Link
+                to="/profile"
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                <User className="w-4 h-4 text-slate-400" />
+                <span>Profile</span>
+              </Link>
               <Link
                 to="/change-password"
                 onClick={() => setMobileNavOpen(false)}
@@ -487,146 +542,220 @@ export function CustomerDashboardView({
                   aria-hidden="true"
                 >
                   <defs>
-                    <radialGradient
-                      id="botGlow"
-                      cx="50%"
-                      cy="45%"
-                      r="50%"
-                    >
-                      <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.4" />
+                    <radialGradient id="botBackglow" cx="50%" cy="46%" r="50%">
+                      <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.35" />
+                      <stop offset="65%" stopColor="#818CF8" stopOpacity="0.18" />
                       <stop offset="100%" stopColor="#C084FC" stopOpacity="0" />
                     </radialGradient>
-                    <linearGradient
-                      id="botHeadGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
+                    <radialGradient id="botShadow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#1E293B" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="#1E293B" stopOpacity="0" />
+                    </radialGradient>
+                    <linearGradient id="botHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#FFFFFF" />
+                      <stop offset="70%" stopColor="#F1F5F9" />
                       <stop offset="100%" stopColor="#E2E8F0" />
                     </linearGradient>
-                    <linearGradient
-                      id="botScreenGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="0%"
-                      y2="100%"
-                    >
+                    <linearGradient id="botEarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#38BDF8" />
+                      <stop offset="100%" stopColor="#2563EB" />
+                    </linearGradient>
+                    <linearGradient id="botVisorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#0B1120" />
+                      <stop offset="50%" stopColor="#0F172A" />
+                      <stop offset="100%" stopColor="#1E293B" />
+                    </linearGradient>
+                    <linearGradient id="botEyeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#67E8F9" />
+                      <stop offset="100%" stopColor="#38BDF8" />
+                    </linearGradient>
+                    <linearGradient id="botBodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FFFFFF" />
+                      <stop offset="60%" stopColor="#F8FAFC" />
+                      <stop offset="100%" stopColor="#E2E8F0" />
+                    </linearGradient>
+                    <linearGradient id="laptopLidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="50%" stopColor="#2563EB" />
+                      <stop offset="100%" stopColor="#1D4ED8" />
+                    </linearGradient>
+                    <linearGradient id="laptopScreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="#0F172A" />
                       <stop offset="100%" stopColor="#1E293B" />
                     </linearGradient>
-                    <linearGradient
-                      id="laptopGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#3B82F6" />
-                      <stop offset="100%" stopColor="#1D4ED8" />
+                    <linearGradient id="laptopBaseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#94A3B8" />
+                      <stop offset="50%" stopColor="#CBD5E1" />
+                      <stop offset="100%" stopColor="#94A3B8" />
                     </linearGradient>
                   </defs>
 
-                  {/* Ambient Glow */}
-                  <circle cx="120" cy="100" r="90" fill="url(#botGlow)" />
+                  {/* Ground Contact Shadow */}
+                  <ellipse cx="120" cy="204" rx="76" ry="7" fill="url(#botShadow)" />
 
-                  {/* Antenna */}
+                  {/* Ambient Soft Backglow */}
+                  <circle cx="120" cy="98" r="88" fill="url(#botBackglow)" />
+
+                  {/* Antenna stem and glowing orb */}
                   <line
                     x1="120"
-                    y1="40"
+                    y1="36"
                     x2="120"
-                    y2="20"
+                    y2="18"
                     stroke="#38BDF8"
-                    strokeWidth="5"
+                    strokeWidth="4"
                     strokeLinecap="round"
                   />
-                  <circle cx="120" cy="18" r="6" fill="#38BDF8" />
+                  <circle cx="120" cy="14" r="6" fill="#38BDF8" />
+                  <circle cx="120" cy="14" r="9" stroke="#67E8F9" strokeWidth="1.5" strokeOpacity="0.5" />
+                  <circle cx="118.5" cy="12.5" r="2" fill="#FFFFFF" />
 
-                  {/* Head Outer Shell */}
+                  {/* Head Ear Pods (Left & Right) */}
+                  <rect x="46" y="62" width="14" height="34" rx="7" fill="url(#botEarGrad)" />
+                  <rect x="48" y="68" width="10" height="22" rx="5" fill="#0284C7" />
+                  <rect x="180" y="62" width="14" height="34" rx="7" fill="url(#botEarGrad)" />
+                  <rect x="182" y="68" width="10" height="22" rx="5" fill="#0284C7" />
+
+                  {/* Head Chassis */}
                   <rect
-                    x="55"
-                    y="40"
-                    width="130"
-                    height="95"
-                    rx="38"
+                    x="56"
+                    y="32"
+                    width="128"
+                    height="92"
+                    rx="32"
                     fill="url(#botHeadGrad)"
                     stroke="#CBD5E1"
                     strokeWidth="2"
                   />
 
-                  {/* Left / Right Ear nodes */}
-                  <rect
-                    x="42"
-                    y="70"
-                    width="16"
-                    height="32"
-                    rx="8"
-                    fill="#38BDF8"
-                  />
-                  <rect
-                    x="182"
-                    y="70"
-                    width="16"
-                    height="32"
-                    rx="8"
-                    fill="#38BDF8"
+                  {/* Head Gloss / Highlight strip */}
+                  <path
+                    d="M 74 36 Q 120 40 166 36"
+                    stroke="#FFFFFF"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeOpacity="0.8"
                   />
 
-                  {/* Face Screen Visor */}
+                  {/* Face Visor Screen */}
                   <rect
                     x="68"
-                    y="52"
+                    y="44"
                     width="104"
                     height="68"
-                    rx="26"
-                    fill="url(#botScreenGrad)"
+                    rx="24"
+                    fill="url(#botVisorGrad)"
+                    stroke="#334155"
+                    strokeWidth="1.5"
                   />
 
-                  {/* Expressive Glowing Eyes */}
-                  <circle cx="95" cy="84" r="11" fill="#38BDF8" />
-                  <circle cx="98" cy="81" r="3.5" fill="#FFFFFF" />
-
-                  <circle cx="145" cy="84" r="11" fill="#38BDF8" />
-                  <circle cx="148" cy="81" r="3.5" fill="#FFFFFF" />
-
-                  {/* Curved Smile */}
+                  {/* Visor Glare Curve */}
                   <path
-                    d="M110 98 Q120 106 130 98"
+                    d="M 78 50 Q 120 54 158 58"
+                    stroke="#FFFFFF"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeOpacity="0.25"
+                  />
+
+                  {/* Left Friendly Glowing Eye */}
+                  <g>
+                    <rect x="86" y="62" width="20" height="24" rx="10" fill="url(#botEyeGlow)" />
+                    {/* Eye Sparkle Highlights */}
+                    <circle cx="94" cy="69" r="3.5" fill="#FFFFFF" />
+                    <circle cx="99" cy="77" r="1.5" fill="#FFFFFF" />
+                  </g>
+
+                  {/* Right Friendly Glowing Eye */}
+                  <g>
+                    <rect x="134" y="62" width="20" height="24" rx="10" fill="url(#botEyeGlow)" />
+                    {/* Eye Sparkle Highlights */}
+                    <circle cx="142" cy="69" r="3.5" fill="#FFFFFF" />
+                    <circle cx="147" cy="77" r="1.5" fill="#FFFFFF" />
+                  </g>
+
+                  {/* Cheerful Rosy Cheeks */}
+                  <ellipse cx="80" cy="88" rx="5" ry="2.5" fill="#38BDF8" fillOpacity="0.3" />
+                  <ellipse cx="160" cy="88" rx="5" ry="2.5" fill="#38BDF8" fillOpacity="0.3" />
+
+                  {/* Warm Curved Smile */}
+                  <path
+                    d="M 112 91 Q 120 100 128 91"
                     stroke="#38BDF8"
-                    strokeWidth="3.5"
+                    strokeWidth="3.2"
                     strokeLinecap="round"
                     fill="none"
                   />
 
-                  {/* Robot Shoulders / Arms */}
+                  {/* Neck Joint */}
+                  <rect x="108" y="122" width="24" height="10" rx="3" fill="#64748B" />
+                  <rect x="112" y="124" width="16" height="3" rx="1.5" fill="#38BDF8" />
+
+                  {/* Torso Chassis */}
                   <rect
-                    x="80"
-                    y="132"
-                    width="80"
-                    height="50"
-                    rx="20"
-                    fill="#F1F5F9"
+                    x="76"
+                    y="130"
+                    width="88"
+                    height="54"
+                    rx="22"
+                    fill="url(#botBodyGrad)"
                     stroke="#CBD5E1"
                     strokeWidth="1.5"
                   />
 
-                  {/* Laptop Screen & Keyboard */}
+                  {/* Chest AI Core Emblem */}
+                  <circle cx="120" cy="148" r="9" fill="#0F172A" />
+                  <circle cx="120" cy="148" r="6" fill="#38BDF8" />
+                  <circle cx="120" cy="148" r="2.5" fill="#FFFFFF" />
+
+                  {/* Left & Right Shoulders / Upper Arms */}
                   <path
-                    d="M75 145 L165 145 L155 190 L85 190 Z"
-                    fill="url(#laptopGrad)"
-                    stroke="#2563EB"
-                    strokeWidth="1.5"
+                    d="M 76 138 C 65 146 62 165 72 176"
+                    stroke="#CBD5E1"
+                    strokeWidth="9"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 164 138 C 175 146 178 165 168 176"
+                    stroke="#CBD5E1"
+                    strokeWidth="9"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Modern Laptop - Open Screen & Glow */}
+                  <path
+                    d="M 68 156 L 172 156 L 164 192 L 76 192 Z"
+                    fill="url(#laptopLidGrad)"
+                    stroke="#1E40AF"
+                    strokeWidth="1.2"
                   />
                   <rect
-                    x="85"
-                    y="152"
-                    width="70"
+                    x="78"
+                    y="160"
+                    width="84"
                     height="28"
-                    rx="4"
-                    fill="#0F172A"
+                    rx="3"
+                    fill="url(#laptopScreenGrad)"
                   />
-                  <circle cx="120" cy="166" r="4.5" fill="#38BDF8" />
+                  {/* Laptop Screen Content - glowing lines & AI pulse */}
+                  <line x1="84" y1="168" x2="114" y2="168" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="84" y1="174" x2="104" y2="174" stroke="#818CF8" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="146" cy="172" r="5" fill="#38BDF8" />
+                  <circle cx="146" cy="172" r="2" fill="#FFFFFF" />
+
+                  {/* Laptop Base Deck */}
+                  <path
+                    d="M 58 193 L 182 193 L 176 202 L 64 202 Z"
+                    fill="url(#laptopBaseGrad)"
+                    stroke="#64748B"
+                    strokeWidth="1"
+                  />
+                  {/* Trackpad */}
+                  <rect x="108" y="195" width="24" height="5" rx="1.5" fill="#94A3B8" />
+
+                  {/* Friendly Hands Typing on Deck */}
+                  <ellipse cx="80" cy="191" rx="8" ry="6" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.2" />
+                  <ellipse cx="160" cy="191" rx="8" ry="6" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.2" />
                 </svg>
               </div>
 
@@ -801,9 +930,11 @@ export function CustomerDashboardView({
         {/* ======================================================================= */}
         <section
           aria-label="Quick Actions"
-          className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8"
+          className={`grid ${
+            user.role === 'ADMIN' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
+          } gap-5 mb-8`}
         >
-          {/* Action Card 1: View My Support Tickets */}
+          {/* Action Card 1: View Support Tickets */}
           <div className="rounded-2xl bg-white border border-purple-100/90 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
             <div className="flex items-start gap-4">
               {/* Document + Magnifying Glass Icon Box */}
@@ -815,10 +946,18 @@ export function CustomerDashboardView({
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  View My Support Tickets
+                  {user.role === 'AGENT'
+                    ? 'View Assigned Tickets'
+                    : user.role === 'ADMIN'
+                    ? 'View All Tickets'
+                    : 'View My Support Tickets'}
                 </h2>
                 <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-                  Search and filter your submitted tickets by status or priority.
+                  {user.role === 'AGENT'
+                    ? 'Manage, track, and resolve tickets currently assigned to you.'
+                    : user.role === 'ADMIN'
+                    ? 'Monitor, filter, and inspect all support tickets across the platform.'
+                    : 'Search and filter your submitted tickets by status or priority.'}
                 </p>
               </div>
             </div>
@@ -828,42 +967,50 @@ export function CustomerDashboardView({
                 className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-[#f5f0ff] hover:bg-[#ede5ff] text-purple-700 border border-purple-200/80 transition-colors"
               >
                 <ArrowRight className="w-4 h-4 rotate-45" />
-                <span>View Tickets</span>
+                <span>
+                  {user.role === 'AGENT'
+                    ? 'View Assigned Tickets'
+                    : user.role === 'ADMIN'
+                    ? 'View All Tickets'
+                    : 'View Tickets'}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
 
-          {/* Action Card 2: Submit a New Ticket */}
-          <div className="rounded-2xl bg-white border border-blue-100/90 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
-            <div className="flex items-start gap-4">
-              {/* Document + Plus Badge Icon Box */}
-              <div className="w-14 h-14 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center shrink-0">
-                <div className="relative">
-                  <FileText className="w-7 h-7" />
-                  <PlusCircle className="w-4 h-4 text-blue-700 absolute -bottom-1 -right-1 bg-white rounded-full" />
+          {/* Action Card 2: Submit a New Ticket (Visible for CUSTOMER and AGENT, hidden for ADMIN) */}
+          {user.role !== 'ADMIN' && (
+            <div className="rounded-2xl bg-white border border-blue-100/90 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="flex items-start gap-4">
+                {/* Document + Plus Badge Icon Box */}
+                <div className="w-14 h-14 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center shrink-0">
+                  <div className="relative">
+                    <FileText className="w-7 h-7" />
+                    <PlusCircle className="w-4 h-4 text-blue-700 absolute -bottom-1 -right-1 bg-white rounded-full" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Submit a New Ticket
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+                    Create a support ticket for an issue or request.
+                  </p>
                 </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  Submit a New Ticket
-                </h2>
-                <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-                  Create a support ticket for an issue or request.
-                </p>
+              <div className="mt-6">
+                <Link
+                  to="/tickets/new"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Create Ticket</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
             </div>
-            <div className="mt-6">
-              <Link
-                to="/tickets/new"
-                className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Create Ticket</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
+          )}
         </section>
 
         {/* ======================================================================= */}
@@ -1239,14 +1386,24 @@ export function CustomerDashboardView({
                 to="/tickets"
                 className="hover:text-blue-600 transition-colors"
               >
-                Tickets
+                {ticketsLabel}
               </Link>
-              <Link
-                to="/tickets/new"
-                className="hover:text-blue-600 transition-colors"
-              >
-                Submit Ticket
-              </Link>
+              {user.role !== 'ADMIN' && (
+                <Link
+                  to="/tickets/new"
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  Submit Ticket
+                </Link>
+              )}
+              {user.role === 'ADMIN' && (
+                <Link
+                  to="/admin/agent-requests"
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  Agent Requests
+                </Link>
+              )}
               <Link
                 to="/notifications"
                 className="hover:text-blue-600 transition-colors"
