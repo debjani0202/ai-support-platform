@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { TicketResponse } from '@/types/ticket.types';
+import type { AgentResponse } from '@/types/user.types';
 import { assignTicketApi } from '@/lib/api/tickets';
+import { getAgentsApi } from '@/lib/api/users';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { UserCheck, X, AlertCircle } from 'lucide-react';
+import { UserCheck, X, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AssignAgentModalProps {
@@ -20,37 +21,96 @@ export function AssignAgentModal({
   onClose,
   onAssigned,
 }: AssignAgentModalProps) {
-  const [agentIdInput, setAgentIdInput] = useState<string>(
-    ticket.assignedTo !== null ? String(ticket.assignedTo) : ''
-  );
+  const [agents, setAgents] = useState<AgentResponse[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [isLoadingAgents, setIsLoadingAgents] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const fetchAgents = useCallback(async () => {
+    setIsLoadingAgents(true);
+    setFetchError(null);
+    setAgents([]); // Clear any previous agent data to prevent stale selection
+    setSelectedAgentId('');
+    try {
+      const data = await getAgentsApi();
+      setAgents(data);
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setFetchError(apiErr.message || 'Failed to load support agents.');
+      setAgents([]);
+    } finally {
+      setIsLoadingAgents(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSubmitError(null);
+      fetchAgents();
+    }
+  }, [isOpen, fetchAgents]);
+
+  useEffect(() => {
+    if (isOpen && !isLoadingAgents && !fetchError) {
+      if (ticket.assignedTo !== null) {
+        const found = agents.some((a) => a.id === ticket.assignedTo);
+        if (found) {
+          setSelectedAgentId(String(ticket.assignedTo));
+        } else {
+          // The assigned agent is not in the returned agents list (e.g. role changed)
+          setSelectedAgentId('');
+        }
+      } else {
+        setSelectedAgentId('');
+      }
+    }
+  }, [isOpen, isLoadingAgents, fetchError, ticket.assignedTo, agents]);
+
+  const isCurrentAssigneeInList =
+    ticket.assignedTo !== null
+      ? agents.some((a) => a.id === ticket.assignedTo)
+      : true;
+
+  const currentAssignedAgent =
+    ticket.assignedTo !== null
+      ? agents.find((a) => a.id === ticket.assignedTo)
+      : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedId = Number(agentIdInput.trim());
+    const parsedId = Number(selectedAgentId);
 
-    if (!agentIdInput.trim() || isNaN(parsedId) || parsedId <= 0 || !Number.isInteger(parsedId)) {
-      setError('Please provide a valid numeric Agent ID (positive integer).');
+    if (fetchError) {
+      setSubmitError('Cannot assign ticket while agent directory fetch has failed.');
+      return;
+    }
+
+    if (!selectedAgentId || isNaN(parsedId) || parsedId <= 0 || !Number.isInteger(parsedId)) {
+      setSubmitError('Please select a valid support agent.');
       return;
     }
 
     setIsSubmitting(true);
-    setError(null);
+    setSubmitError(null);
 
     try {
       const updated = await assignTicketApi(ticket.id, parsedId);
-      toast.success(`Ticket #${ticket.id} assigned to Agent #${parsedId}.`);
+      const assignedAgent = agents.find((a) => a.id === parsedId);
+      const agentDisplayName = assignedAgent ? assignedAgent.name : `Agent #${parsedId}`;
+      toast.success(`Ticket #${ticket.id} assigned to ${agentDisplayName}.`);
       onAssigned(updated);
       onClose();
     } catch (err: unknown) {
       const apiErr = err as { message?: string; errors?: Record<string, string> };
       if (apiErr.errors?.agentId) {
-        setError(apiErr.errors.agentId);
+        setSubmitError(apiErr.errors.agentId);
       } else if (apiErr.message) {
-        setError(apiErr.message);
+        setSubmitError(apiErr.message);
       } else {
-        setError('Failed to assign ticket. Ensure the target user exists and has the AGENT role.');
+        setSubmitError('Failed to assign ticket. Ensure the target user exists and has the AGENT role.');
       }
     } finally {
       setIsSubmitting(false);
@@ -72,7 +132,7 @@ export function AssignAgentModal({
                   Assign Ticket #{ticket.id}
                 </Dialog.Title>
                 <Dialog.Description className="text-xs text-slate-500">
-                  Assign this ticket to an active support agent by their numeric user ID.
+                  Assign this ticket to a support agent from the available agent directory.
                 </Dialog.Description>
               </div>
             </div>
@@ -89,33 +149,94 @@ export function AssignAgentModal({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+            {fetchError && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{fetchError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchAgents}
+                  className="inline-flex items-center gap-1 font-semibold text-rose-800 hover:underline"
+                >
+                  <RefreshCw className="w-3 h-3" /> Retry
+                </button>
               </div>
             )}
 
-            <div className="space-y-1">
-              <Input
-                label="Agent ID"
-                type="number"
-                min={1}
-                step={1}
-                value={agentIdInput}
-                onChange={(e) => {
-                  setAgentIdInput(e.target.value);
-                  if (error) setError(null);
-                }}
-                placeholder="e.g. 2"
-                helperText={
-                  ticket.assignedTo !== null
-                    ? `Currently assigned to Agent #${ticket.assignedTo}`
-                    : 'Currently unassigned'
-                }
-                disabled={isSubmitting}
-                autoFocus
-              />
+            {submitError && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
+
+            {ticket.assignedTo !== null && !isLoadingAgents && !fetchError && !isCurrentAssigneeInList && (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                <span>
+                  The currently assigned agent (ID #{ticket.assignedTo}) is no longer available in the agent directory (e.g., role changed or demoted). Please select a new agent from the list below.
+                </span>
+              </div>
+            )}
+
+            {!isLoadingAgents && !fetchError && agents.length === 0 && (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                <span>
+                  No available support agents found in the system. New agents must be created or approved before tickets can be assigned.
+                </span>
+              </div>
+            )}
+
+            <div className="space-y-1.5 text-left">
+              <label
+                htmlFor="agent-select"
+                className="block text-xs font-semibold uppercase tracking-wider text-slate-700"
+              >
+                Assignee
+              </label>
+
+              {isLoadingAgents ? (
+                <div className="flex h-10 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                  <span>Loading agents...</span>
+                </div>
+              ) : (
+                <select
+                  id="agent-select"
+                  value={selectedAgentId}
+                  onChange={(e) => {
+                    setSelectedAgentId(e.target.value);
+                    if (submitError) setSubmitError(null);
+                  }}
+                  disabled={isSubmitting || Boolean(fetchError) || agents.length === 0}
+                  className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors shadow-xs disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="" disabled>
+                    {agents.length === 0 ? 'No available agents' : 'Select an agent...'}
+                  </option>
+                  {ticket.assignedTo !== null && !isCurrentAssigneeInList && (
+                    <option value={String(ticket.assignedTo)} disabled>
+                      Current: Agent #{ticket.assignedTo} (No longer available as an agent)
+                    </option>
+                  )}
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={String(agent.id)}>
+                      {agent.name} ({agent.email})
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <p className="text-xs text-slate-500">
+                {ticket.assignedTo !== null
+                  ? isCurrentAssigneeInList && currentAssignedAgent
+                    ? `Currently assigned to ${currentAssignedAgent.name}`
+                    : `Currently assigned to Agent #${ticket.assignedTo}`
+                  : 'Currently unassigned'}
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -133,7 +254,13 @@ export function AssignAgentModal({
                 variant="primary"
                 size="sm"
                 isLoading={isSubmitting}
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting ||
+                  isLoadingAgents ||
+                  Boolean(fetchError) ||
+                  !selectedAgentId ||
+                  agents.length === 0
+                }
               >
                 Confirm Assignment
               </Button>
