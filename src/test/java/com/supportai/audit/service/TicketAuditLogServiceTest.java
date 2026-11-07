@@ -331,13 +331,12 @@ class TicketAuditLogServiceTest {
     }
 
     @Test
-    void getHistory_customerCanRetrieveHistoryForOwnSoftDeletedTicket() {
+    void getHistory_customerDeniedAccessToSoftDeletedTicket_throwsResourceNotFoundException() {
         Long ticketId = 1L;
         Long customerId = 10L;
 
         User customer = mock(User.class);
         when(customer.getId()).thenReturn(customerId);
-        when(customer.getName()).thenReturn("Alice Customer");
 
         Ticket ticket = mock(Ticket.class);
         when(ticket.getId()).thenReturn(ticketId);
@@ -346,21 +345,12 @@ class TicketAuditLogServiceTest {
 
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
 
-        TicketAuditLog logEntry = mock(TicketAuditLog.class);
-        when(logEntry.getId()).thenReturn(101L);
-        when(logEntry.getTicket()).thenReturn(ticket);
-        when(logEntry.getActor()).thenReturn(customer);
-        when(logEntry.getAction()).thenReturn("CREATED");
-        when(logEntry.getCreatedAt()).thenReturn(LocalDateTime.now());
-
-        when(auditLogRepository.findByTicketId(eq(ticketId), any(Sort.class)))
-                .thenReturn(List.of(logEntry));
-
-        List<TicketAuditLogResponse> history = auditLogService.getHistory(ticketId, customerId, Role.CUSTOMER);
-
-        assertNotNull(history);
-        assertEquals(1, history.size());
-        assertEquals("CREATED", history.get(0).action());
+        ResourceNotFoundException ex = assertThrows(
+                ResourceNotFoundException.class,
+                () -> auditLogService.getHistory(ticketId, customerId, Role.CUSTOMER)
+        );
+        assertEquals("Ticket not found with ID: " + ticketId, ex.getMessage());
+        verify(auditLogRepository, never()).findByTicketId(any(), any());
     }
 
     @Test
@@ -378,22 +368,21 @@ class TicketAuditLogServiceTest {
 
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
 
-        assertThrows(
-                ForbiddenException.class,
+        ResourceNotFoundException ex = assertThrows(
+                ResourceNotFoundException.class,
                 () -> auditLogService.getHistory(ticketId, requesterId, Role.CUSTOMER)
         );
-
+        assertEquals("Ticket not found with ID: " + ticketId, ex.getMessage());
         verify(auditLogRepository, never()).findByTicketId(any(), any());
     }
 
     @Test
-    void getHistory_agentCanRetrieveHistoryForAssignedSoftDeletedTicket() {
+    void getHistory_agentDeniedAccessToAssignedSoftDeletedTicket_throwsResourceNotFoundException() {
         Long ticketId = 1L;
         Long agentId = 30L;
 
         User agent = mock(User.class);
         when(agent.getId()).thenReturn(agentId);
-        when(agent.getName()).thenReturn("Bob Agent");
 
         Ticket ticket = mock(Ticket.class);
         when(ticket.getId()).thenReturn(ticketId);
@@ -402,21 +391,12 @@ class TicketAuditLogServiceTest {
 
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
 
-        TicketAuditLog logEntry = mock(TicketAuditLog.class);
-        when(logEntry.getId()).thenReturn(102L);
-        when(logEntry.getTicket()).thenReturn(ticket);
-        when(logEntry.getActor()).thenReturn(agent);
-        when(logEntry.getAction()).thenReturn("DELETED");
-        when(logEntry.getCreatedAt()).thenReturn(LocalDateTime.now());
-
-        when(auditLogRepository.findByTicketId(eq(ticketId), any(Sort.class)))
-                .thenReturn(List.of(logEntry));
-
-        List<TicketAuditLogResponse> history = auditLogService.getHistory(ticketId, agentId, Role.AGENT);
-
-        assertNotNull(history);
-        assertEquals(1, history.size());
-        assertEquals("DELETED", history.get(0).action());
+        ResourceNotFoundException ex = assertThrows(
+                ResourceNotFoundException.class,
+                () -> auditLogService.getHistory(ticketId, agentId, Role.AGENT)
+        );
+        assertEquals("Ticket not found with ID: " + ticketId, ex.getMessage());
+        verify(auditLogRepository, never()).findByTicketId(any(), any());
     }
 
     @Test
@@ -430,11 +410,11 @@ class TicketAuditLogServiceTest {
 
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
 
-        assertThrows(
-                ForbiddenException.class,
+        ResourceNotFoundException ex = assertThrows(
+                ResourceNotFoundException.class,
                 () -> auditLogService.getHistory(ticketId, requestingAgentId, Role.AGENT)
         );
-
+        assertEquals("Ticket not found with ID: " + ticketId, ex.getMessage());
         verify(auditLogRepository, never()).findByTicketId(any(), any());
     }
 }

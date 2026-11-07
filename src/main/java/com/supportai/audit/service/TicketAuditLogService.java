@@ -120,6 +120,14 @@ public class TicketAuditLogService {
                         )
                 );
 
+        // Soft-deleted tickets are hidden from non-admin users (CUSTOMERS and AGENTS)
+        // to prevent presence disclosure. Administrators retain full audit access.
+        if (ticket.getDeletedAt() != null && currentUserRole != Role.ADMIN) {
+            throw new ResourceNotFoundException(
+                    "Ticket not found with ID: " + ticketId
+            );
+        }
+
         boolean allowed;
 
         // Administrators can view every ticket's audit history.

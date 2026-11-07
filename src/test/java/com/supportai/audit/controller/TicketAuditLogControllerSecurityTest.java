@@ -3,6 +3,7 @@ package com.supportai.audit.controller;
 import com.supportai.audit.service.TicketAuditLogService;
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.GlobalExceptionHandler;
+import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.security.SecurityConfig;
 import com.supportai.user.entity.Role;
 
@@ -110,5 +111,31 @@ class TicketAuditLogControllerSecurityTest {
                                 .claim("role", "ADMIN"))
                                 .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void customerReceivesNotFoundForSoftDeletedTicket() throws Exception {
+        when(auditLogService.getHistory(eq(1L), eq(1L), eq(Role.CUSTOMER)))
+                .thenThrow(new ResourceNotFoundException("Ticket not found with ID: 1"));
+
+        mockMvc.perform(get("/api/tickets/1/audit-logs")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void agentReceivesNotFoundForSoftDeletedTicket() throws Exception {
+        when(auditLogService.getHistory(eq(1L), eq(2L), eq(Role.AGENT)))
+                .thenThrow(new ResourceNotFoundException("Ticket not found with ID: 1"));
+
+        mockMvc.perform(get("/api/tickets/1/audit-logs")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("2")
+                                .claim("role", "AGENT"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_AGENT"))))
+                .andExpect(status().isNotFound());
     }
 }
