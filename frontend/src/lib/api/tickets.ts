@@ -1,4 +1,4 @@
-﻿import { apiClient } from './client';
+import { apiClient } from './client';
 import type { PageResponse } from '@/types/api.types';
 import type {
   TicketResponse,
@@ -87,4 +87,21 @@ export async function assignTicketApi(
  */
 export async function deleteTicketApi(id: number): Promise<void> {
   await apiClient.delete(`/tickets/${id}`);
+}
+
+export interface TicketStatsResponse {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+}
+
+/**
+ * Retrieves aggregate ticket statistics for the dashboard.
+ * Scoping is applied automatically by the backend based on caller's role.
+ * Matches GET /api/tickets/stats
+ */
+export async function getTicketStatsApi(): Promise<TicketStatsResponse> {
+  const response = await apiClient.get<TicketStatsResponse>('/tickets/stats');
+  return response.data;
 }

@@ -5,6 +5,7 @@ import com.supportai.ticket.dto.AssignTicketRequest;
 import com.supportai.ticket.dto.CreateTicketRequest;
 import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
+import com.supportai.ticket.dto.TicketStatsResponse;
 import com.supportai.ticket.dto.UpdateTicketRequest;
 import com.supportai.ticket.service.TicketService;
 import com.supportai.ticket.entity.TicketPriority;
@@ -85,6 +86,24 @@ public class TicketController {
                 priority,
                 category,
                 assignedAgentId,
+                currentUserId,
+                currentUserRole
+        );
+    }
+
+    @GetMapping("/stats")
+    public TicketStatsResponse getTicketStats(
+            Authentication authentication
+    ) {
+        Long currentUserId = Long.valueOf(
+                authentication.getName()
+        );
+
+        Role currentUserRole = getCurrentUserRole(
+                authentication
+        );
+
+        return ticketService.getTicketStats(
                 currentUserId,
                 currentUserRole
         );

@@ -1,7 +1,10 @@
 import { describe, expect, it, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomerDashboardView } from '@/components/dashboard/CustomerDashboardView';
+import * as ticketsApi from '@/lib/api/tickets';
+
+vi.mock('@/lib/api/tickets');
 
 describe('CustomerDashboardView', () => {
   afterEach(() => {
@@ -296,5 +299,94 @@ describe('CustomerDashboardView', () => {
 
     expect(screen.getByText('Profile')).toBeDefined();
     expect(screen.getByText('Change Password')).toBeDefined();
+  });
+
+  it('calls getTicketStatsApi and displays stats cards with returned values', async () => {
+    vi.mocked(ticketsApi.getTicketStatsApi).mockResolvedValue({
+      total: 10,
+      open: 4,
+      inProgress: 3,
+      resolved: 3,
+    });
+    vi.mocked(ticketsApi.getTicketsApi).mockResolvedValue({
+      content: mockTickets,
+      page: 0,
+      size: 5,
+      totalElements: 1,
+      totalPages: 1,
+      first: true,
+      last: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <CustomerDashboardView
+          user={mockUser}
+          isPreview={false}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(ticketsApi.getTicketStatsApi).toHaveBeenCalledTimes(1);
+    });
+
+    expect(ticketsApi.getTicketsApi).toHaveBeenCalledWith({
+      page: 0,
+      size: 5,
+      sortBy: 'createdAt',
+      direction: 'desc',
+    });
+
+    // The statistics cards display the returned values
+    expect(await screen.findByText('10')).toBeDefined();
+    expect(screen.getByText('4')).toBeDefined();
+    expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(2);
+
+    // Recent ticket still loads using existing API
+    expect((await screen.findAllByText('#38')).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Unable to Log In to My Account').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('handles statistics fetch failure and follows existing error-handling behavior', async () => {
+    vi.mocked(ticketsApi.getTicketStatsApi).mockRejectedValue(
+      new Error('Failed to fetch stats')
+    );
+    vi.mocked(ticketsApi.getTicketsApi).mockResolvedValue({
+      content: mockTickets,
+      page: 0,
+      size: 5,
+      totalElements: 1,
+      totalPages: 1,
+      first: true,
+      last: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <CustomerDashboardView
+          user={mockUser}
+          isPreview={false}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(ticketsApi.getTicketStatsApi).toHaveBeenCalledTimes(1);
+    });
+
+    // Stats error alert notification is displayed
+    const alert = await screen.findByRole('alert');
+    expect(alert).toBeDefined();
+    expect(
+      screen.getByText(/Unable to load current ticket statistics/i)
+    ).toBeDefined();
+
+    // Stats cards show unavailable placeholder
+    const dashes = screen.getAllByTitle('Data unavailable');
+    expect(dashes.length).toBe(4);
+
+    // Recent tickets still load successfully
+    expect((await screen.findAllByText('#38')).length).toBeGreaterThanOrEqual(1);
   });
 });

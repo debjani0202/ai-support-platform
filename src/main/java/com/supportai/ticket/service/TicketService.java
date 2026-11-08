@@ -10,6 +10,7 @@ import com.supportai.notification.service.NotificationService;
 import com.supportai.ticket.dto.CreateTicketRequest;
 import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
+import com.supportai.ticket.dto.TicketStatsResponse;
 import com.supportai.ticket.dto.UpdateTicketRequest;
 import com.supportai.ticket.entity.Ticket;
 import com.supportai.ticket.entity.TicketPriority;
@@ -264,6 +265,31 @@ public class TicketService {
                 ticketPage.isLast()
         );
     }
+
+    /**
+     * Retrieves aggregate ticket statistics scoped to the user's role:
+     * - CUSTOMER sees counts of tickets they created.
+     * - AGENT sees counts of tickets assigned to them.
+     * - ADMIN sees platform-wide counts across all tickets.
+     */
+    @Transactional(readOnly = true)
+    public TicketStatsResponse getTicketStats(
+            Long currentUserId,
+            Role currentUserRole
+    ) {
+        if (currentUserRole == Role.CUSTOMER) {
+            return ticketRepository.getTicketStatsForCustomer(currentUserId);
+        } else if (currentUserRole == Role.AGENT) {
+            return ticketRepository.getTicketStatsForAgent(currentUserId);
+        } else if (currentUserRole == Role.ADMIN) {
+            return ticketRepository.getTicketStatsForAdmin();
+        } else {
+            throw new ForbiddenException(
+                    "You are not allowed to access ticket statistics"
+            );
+        }
+    }
+
     /**
      * Retrieves a ticket after checking the user's access permissions.
      */

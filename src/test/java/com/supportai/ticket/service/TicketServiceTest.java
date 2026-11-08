@@ -18,6 +18,7 @@ import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.ticket.dto.CreateTicketRequest;
 import com.supportai.ticket.dto.TicketResponse;
+import com.supportai.ticket.dto.TicketStatsResponse;
 import com.supportai.ticket.dto.UpdateTicketRequest;
 import com.supportai.ticket.entity.Ticket;
 import com.supportai.ticket.entity.TicketCategory;
@@ -1450,6 +1451,103 @@ void customerShouldGetOnlyTheirOwnTickets() {
                 eq("STATUS_CHANGED"),
                 eq("OPEN"),
                 eq("IN_PROGRESS")
+        );
+    }
+
+    // --- Ticket Stats Tests ---
+
+    @Test
+    void getTicketStats_admin_returnsPlatformWideStats() {
+        TicketStatsResponse mockStats = new TicketStatsResponse(25L, 10L, 8L, 5L);
+        when(ticketRepository.getTicketStatsForAdmin()).thenReturn(mockStats);
+
+        TicketStatsResponse result = ticketService.getTicketStats(1L, Role.ADMIN);
+
+        assertNotNull(result);
+        assertEquals(25L, result.total());
+        assertEquals(10L, result.open());
+        assertEquals(8L, result.inProgress());
+        assertEquals(5L, result.resolved());
+
+        verify(ticketRepository).getTicketStatsForAdmin();
+        verify(ticketRepository, never()).getTicketStatsForCustomer(any());
+        verify(ticketRepository, never()).getTicketStatsForAgent(any());
+    }
+
+    @Test
+    void getTicketStats_customer_returnsCustomerScopedStats() {
+        Long customerId = 12L;
+        TicketStatsResponse mockStats = new TicketStatsResponse(10L, 4L, 3L, 3L);
+        when(ticketRepository.getTicketStatsForCustomer(customerId)).thenReturn(mockStats);
+
+        TicketStatsResponse result = ticketService.getTicketStats(customerId, Role.CUSTOMER);
+
+        assertNotNull(result);
+        assertEquals(10L, result.total());
+        assertEquals(4L, result.open());
+        assertEquals(3L, result.inProgress());
+        assertEquals(3L, result.resolved());
+
+        verify(ticketRepository).getTicketStatsForCustomer(customerId);
+        verify(ticketRepository, never()).getTicketStatsForAdmin();
+        verify(ticketRepository, never()).getTicketStatsForAgent(any());
+    }
+
+    @Test
+    void getTicketStats_agent_returnsAgentScopedStats() {
+        Long agentId = 55L;
+        TicketStatsResponse mockStats = new TicketStatsResponse(8L, 3L, 4L, 1L);
+        when(ticketRepository.getTicketStatsForAgent(agentId)).thenReturn(mockStats);
+
+        TicketStatsResponse result = ticketService.getTicketStats(agentId, Role.AGENT);
+
+        assertNotNull(result);
+        assertEquals(8L, result.total());
+        assertEquals(3L, result.open());
+        assertEquals(4L, result.inProgress());
+        assertEquals(1L, result.resolved());
+
+        verify(ticketRepository).getTicketStatsForAgent(agentId);
+        verify(ticketRepository, never()).getTicketStatsForAdmin();
+        verify(ticketRepository, never()).getTicketStatsForCustomer(any());
+    }
+
+    @Test
+    void getTicketStats_emptyDataset_returnsZeroValues() {
+        Long customerId = 99L;
+        TicketStatsResponse emptyStats = new TicketStatsResponse(0L, 0L, 0L, 0L);
+        when(ticketRepository.getTicketStatsForCustomer(customerId)).thenReturn(emptyStats);
+
+        TicketStatsResponse result = ticketService.getTicketStats(customerId, Role.CUSTOMER);
+
+        assertNotNull(result);
+        assertEquals(0L, result.total());
+        assertEquals(0L, result.open());
+        assertEquals(0L, result.inProgress());
+        assertEquals(0L, result.resolved());
+    }
+
+    @Test
+    void getTicketStats_closedTicketsContributeToTotalOnly() {
+        // total = 10, open = 3, inProgress = 2, resolved = 1; remaining 4 are CLOSED
+        TicketStatsResponse statsWithClosed = new TicketStatsResponse(10L, 3L, 2L, 1L);
+        when(ticketRepository.getTicketStatsForAdmin()).thenReturn(statsWithClosed);
+
+        TicketStatsResponse result = ticketService.getTicketStats(1L, Role.ADMIN);
+
+        assertNotNull(result);
+        assertEquals(10L, result.total());
+        assertEquals(3L, result.open());
+        assertEquals(2L, result.inProgress());
+        assertEquals(1L, result.resolved());
+        // Verify active statuses sum to 6, with total at 10 (4 CLOSED tickets)
+        assertEquals(6L, result.open() + result.inProgress() + result.resolved());
+    }
+
+    @Test
+    void getTicketStats_unsupportedRole_throwsForbiddenException() {
+        assertThrows(ForbiddenException.class, () ->
+                ticketService.getTicketStats(1L, null)
         );
     }
 }

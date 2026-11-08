@@ -32,7 +32,7 @@ import { StatusBadge } from '@/components/badges/StatusBadge';
 import { PriorityBadge } from '@/components/badges/PriorityBadge';
 import { CategoryBadge } from '@/components/badges/CategoryBadge';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { getTicketsApi } from '@/lib/api/tickets';
+import { getTicketsApi, getTicketStatsApi } from '@/lib/api/tickets';
 import type { TicketResponse } from '@/types/ticket.types';
 import type { NotificationResponse } from '@/types/notification.types';
 import { formatDistanceToNow, parseISO } from 'date-fns';
@@ -99,35 +99,34 @@ export function CustomerDashboardView({
     setStatsError(false);
     setTicketsError(false);
 
-    try {
-      // 4 concurrent status-filtered queries to getTicketsApi
-      const [allTicketsRes, openRes, inProgressRes, resolvedRes] =
-        await Promise.all([
-          getTicketsApi({
-            page: 0,
-            size: 5,
-            sortBy: 'createdAt',
-            direction: 'desc',
-          }),
-          getTicketsApi({ status: 'OPEN', size: 1 }),
-          getTicketsApi({ status: 'IN_PROGRESS', size: 1 }),
-          getTicketsApi({ status: 'RESOLVED', size: 1 }),
-        ]);
-
-      setStats({
-        total: allTicketsRes.totalElements,
-        open: openRes.totalElements,
-        inProgress: inProgressRes.totalElements,
-        resolved: resolvedRes.totalElements,
+    const statsPromise = getTicketStatsApi()
+      .then((statsRes) => {
+        setStats(statsRes);
+      })
+      .catch(() => {
+        setStatsError(true);
+      })
+      .finally(() => {
+        setIsLoadingStats(false);
       });
-      setRecentTickets(allTicketsRes.content);
-    } catch {
-      setStatsError(true);
-      setTicketsError(true);
-    } finally {
-      setIsLoadingStats(false);
-      setIsLoadingTickets(false);
-    }
+
+    const ticketsPromise = getTicketsApi({
+      page: 0,
+      size: 5,
+      sortBy: 'createdAt',
+      direction: 'desc',
+    })
+      .then((allTicketsRes) => {
+        setRecentTickets(allTicketsRes.content);
+      })
+      .catch(() => {
+        setTicketsError(true);
+      })
+      .finally(() => {
+        setIsLoadingTickets(false);
+      });
+
+    await Promise.allSettled([statsPromise, ticketsPromise]);
   }, [isPreview]);
 
   // Initial fetch on mount

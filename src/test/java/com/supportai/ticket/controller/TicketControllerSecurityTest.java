@@ -5,6 +5,7 @@ import com.supportai.exception.ResourceNotFoundException;
 import com.supportai.security.SecurityConfig;
 import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.dto.TicketResponse;
+import com.supportai.ticket.dto.TicketStatsResponse;
 import com.supportai.ticket.entity.TicketCategory;
 import com.supportai.ticket.entity.TicketPriority;
 import com.supportai.ticket.service.TicketService;
@@ -36,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TicketController.class)
@@ -56,6 +58,12 @@ class TicketControllerSecurityTest {
     @Test
     void unauthenticatedUserCannotAccessTickets() throws Exception {
         mockMvc.perform(get("/api/tickets"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void unauthenticatedUserCannotGetTicketStats() throws Exception {
+        mockMvc.perform(get("/api/tickets/stats"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -275,5 +283,61 @@ class TicketControllerSecurityTest {
                                 .claim("role", "ADMIN"))
                                 .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isNotFound());
+    }
+
+    // --- Ticket Stats Tests ---
+
+    @Test
+    void authenticatedCustomerCanGetTicketStats() throws Exception {
+        TicketStatsResponse statsResponse = new TicketStatsResponse(10L, 4L, 3L, 3L);
+        when(ticketService.getTicketStats(eq(12L), eq(Role.CUSTOMER)))
+                .thenReturn(statsResponse);
+
+        mockMvc.perform(get("/api/tickets/stats")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("12")
+                                .claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(10))
+                .andExpect(jsonPath("$.open").value(4))
+                .andExpect(jsonPath("$.inProgress").value(3))
+                .andExpect(jsonPath("$.resolved").value(3));
+    }
+
+    @Test
+    void authenticatedAgentCanGetTicketStats() throws Exception {
+        TicketStatsResponse statsResponse = new TicketStatsResponse(5L, 2L, 2L, 1L);
+        when(ticketService.getTicketStats(eq(55L), eq(Role.AGENT)))
+                .thenReturn(statsResponse);
+
+        mockMvc.perform(get("/api/tickets/stats")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("55")
+                                .claim("role", "AGENT"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_AGENT"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(5))
+                .andExpect(jsonPath("$.open").value(2))
+                .andExpect(jsonPath("$.inProgress").value(2))
+                .andExpect(jsonPath("$.resolved").value(1));
+    }
+
+    @Test
+    void authenticatedAdminCanGetTicketStats() throws Exception {
+        TicketStatsResponse statsResponse = new TicketStatsResponse(20L, 8L, 5L, 7L);
+        when(ticketService.getTicketStats(eq(1L), eq(Role.ADMIN)))
+                .thenReturn(statsResponse);
+
+        mockMvc.perform(get("/api/tickets/stats")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "ADMIN"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(20))
+                .andExpect(jsonPath("$.open").value(8))
+                .andExpect(jsonPath("$.inProgress").value(5))
+                .andExpect(jsonPath("$.resolved").value(7));
     }
 }
