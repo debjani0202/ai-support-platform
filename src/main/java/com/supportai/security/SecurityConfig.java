@@ -1,3 +1,4 @@
+
 package com.supportai.security;
 
 import java.util.List;
@@ -40,6 +41,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
+                                "/api/auth/refresh-token",
+                                "/api/auth/logout",
                                 "/api/auth/forgot-password",
                                 "/api/auth/verify-reset-token",
                                 "/api/auth/reset-password",
@@ -48,8 +51,6 @@ public class SecurityConfig {
                         .permitAll()
 
                         // Defense-in-depth: endpoint-level role restrictions
-                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh-token")
-                                .authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/agent-requests")
                                 .hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.GET, "/api/agent-requests/me")
@@ -88,13 +89,31 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:4173}") List<String> allowedOrigins
+            @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:4173}")
+            List<String> allowedOrigins
     ) {
+        List<String> validatedOrigins = allowedOrigins.stream()
+                .map(String::trim)
+                .toList();
+
+        if (validatedOrigins.isEmpty()
+                || validatedOrigins.stream().anyMatch(
+                        origin -> origin.isBlank() || origin.equals("*"))) {
+            throw new IllegalStateException(
+                    "CORS allowed origins must contain explicit origins. "
+                            + "Wildcard and blank origins are not allowed."
+            );
+        }
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
+
+        configuration.setAllowedOrigins(validatedOrigins);
+        configuration.setAllowCredentials(true);
+
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
+
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",
@@ -102,10 +121,14 @@ public class SecurityConfig {
                 "Origin",
                 "X-Requested-With"
         ));
+
         configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 

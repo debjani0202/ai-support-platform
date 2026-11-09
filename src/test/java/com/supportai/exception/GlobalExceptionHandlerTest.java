@@ -17,7 +17,11 @@ class GlobalExceptionHandlerTest {
 
     @BeforeEach
     void setUp() {
-        exceptionHandler = new GlobalExceptionHandler();
+        exceptionHandler = new GlobalExceptionHandler(
+                "refreshToken",
+                false,
+                "Lax"
+        );
     }
 
     @Test

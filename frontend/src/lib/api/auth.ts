@@ -76,3 +76,12 @@ export async function refreshTokenApi(): Promise<LoginResponse> {
   return response.data;
 }
 
+/**
+ * Revokes current user's refresh token family and clears the HttpOnly cookie via POST /api/auth/logout.
+ * Matches com.supportai.auth.controller.AuthController#logout
+ * Backend returns HTTP 204 No Content on success.
+ */
+export async function logoutApi(): Promise<void> {
+  await apiClient.post<void>('/auth/logout');
+}
+

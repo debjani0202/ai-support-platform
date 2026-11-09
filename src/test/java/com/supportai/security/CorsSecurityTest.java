@@ -3,6 +3,7 @@ package com.supportai.security;
 import com.supportai.auth.controller.AuthController;
 import com.supportai.auth.service.AuthService;
 import com.supportai.auth.service.PasswordResetService;
+import com.supportai.auth.service.RefreshTokenService;
 import com.supportai.exception.GlobalExceptionHandler;
 import com.supportai.ticket.controller.TicketController;
 import com.supportai.ticket.dto.PageResponse;
@@ -47,6 +48,9 @@ class CorsSecurityTest {
 
     @MockitoBean
     private PasswordResetService passwordResetService;
+
+    @MockitoBean
+    private RefreshTokenService refreshTokenService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;

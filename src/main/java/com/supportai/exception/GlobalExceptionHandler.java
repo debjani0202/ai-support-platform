@@ -1,8 +1,12 @@
+
 package com.supportai.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,99 +19,155 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger log =
-            LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleResourceNotFound(
-            ResourceNotFoundException ex) {
+        private final String cookieName;
+        private final boolean cookieSecure;
+        private final String cookieSameSite;
 
-        Map<String, Object> error = new LinkedHashMap<>();
+        public GlobalExceptionHandler(
+                        @Value("${app.auth.cookie.name:refreshToken}") String cookieName,
+                        @Value("${app.auth.cookie.secure:false}") boolean cookieSecure,
+                        @Value("${app.auth.cookie.same-site:Lax}") String cookieSameSite) {
+                this.cookieName = cookieName;
+                this.cookieSecure = cookieSecure;
+                this.cookieSameSite = cookieSameSite;
+        }
 
-        error.put("timestamp", LocalDateTime.now());
-        error.put("status", HttpStatus.NOT_FOUND.value());
-        error.put("error", "Not Found");
-        error.put("message", ex.getMessage());
+        @ExceptionHandler(InvalidRefreshTokenException.class)
+        public ResponseEntity<Map<String, Object>> handleInvalidRefreshToken(
+                        InvalidRefreshTokenException ex) {
 
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(error);
-    }
+                Map<String, Object> error = new LinkedHashMap<>();
 
-    @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<Map<String, Object>> handleForbidden(
-            ForbiddenException ex) {
+                error.put("timestamp", LocalDateTime.now());
+                error.put("status", HttpStatus.UNAUTHORIZED.value());
+                error.put("error", "Unauthorized");
+                error.put("message", ex.getMessage());
+                error.put("reason", ex.getReason().name());
 
-        Map<String, Object> error = new LinkedHashMap<>();
+                ResponseCookie clearCookie = ResponseCookie.from(cookieName, "")
+                                .httpOnly(true)
+                                .secure(cookieSecure)
+                                .sameSite(cookieSameSite)
+                                .path("/api/auth")
+                                .maxAge(0)
+                                .build();
 
-        error.put("timestamp", LocalDateTime.now());
-        error.put("status", HttpStatus.FORBIDDEN.value());
-        error.put("error", "Forbidden");
-        error.put("message", ex.getMessage());
+                return ResponseEntity
+                                .status(HttpStatus.UNAUTHORIZED)
+                                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                                .body(error);
+        }
 
-        return ResponseEntity
-                .status(HttpStatus.FORBIDDEN)
-                .body(error);
-    }
+        @ExceptionHandler(TokenAlreadyRotatedException.class)
+        public ResponseEntity<Map<String, Object>> handleTokenAlreadyRotated(
+                        TokenAlreadyRotatedException ex) {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidation(
-            MethodArgumentNotValidException ex) {
+                Map<String, Object> error = new LinkedHashMap<>();
 
-        Map<String, String> validationErrors = new LinkedHashMap<>();
+                error.put("timestamp", LocalDateTime.now());
+                error.put("status", HttpStatus.CONFLICT.value());
+                error.put("error", "Conflict");
+                error.put("message", ex.getMessage());
+                error.put("errorCode", ex.getErrorCode());
 
-        ex.getBindingResult()
-                .getFieldErrors()
-                .forEach(error ->
-                        validationErrors.put(
-                                error.getField(),
-                                error.getDefaultMessage()
-                        )
-                );
+                return ResponseEntity
+                                .status(HttpStatus.CONFLICT)
+                                .body(error);
+        }
 
-        Map<String, Object> response = new LinkedHashMap<>();
+        @ExceptionHandler(ResourceNotFoundException.class)
+        public ResponseEntity<Map<String, Object>> handleResourceNotFound(
+                        ResourceNotFoundException ex) {
 
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Validation Failed");
-        response.put("errors", validationErrors);
+                Map<String, Object> error = new LinkedHashMap<>();
 
-        return ResponseEntity
-                .badRequest()
-                .body(response);
-    }
+                error.put("timestamp", LocalDateTime.now());
+                error.put("status", HttpStatus.NOT_FOUND.value());
+                error.put("error", "Not Found");
+                error.put("message", ex.getMessage());
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(
-            IllegalArgumentException ex) {
+                return ResponseEntity
+                                .status(HttpStatus.NOT_FOUND)
+                                .body(error);
+        }
 
-        Map<String, Object> response = new LinkedHashMap<>();
+        @ExceptionHandler(ForbiddenException.class)
+        public ResponseEntity<Map<String, Object>> handleForbidden(
+                        ForbiddenException ex) {
 
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Bad Request");
-        response.put("message", ex.getMessage());
+                Map<String, Object> error = new LinkedHashMap<>();
 
-        return ResponseEntity
-                .badRequest()
-                .body(response);
-    }
+                error.put("timestamp", LocalDateTime.now());
+                error.put("status", HttpStatus.FORBIDDEN.value());
+                error.put("error", "Forbidden");
+                error.put("message", ex.getMessage());
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGenericException(
-            Exception ex) {
+                return ResponseEntity
+                                .status(HttpStatus.FORBIDDEN)
+                                .body(error);
+        }
 
-        log.error("Unhandled server exception caught by GlobalExceptionHandler", ex);
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public ResponseEntity<Map<String, Object>> handleValidation(
+                        MethodArgumentNotValidException ex) {
 
-        Map<String, Object> error = new LinkedHashMap<>();
+                Map<String, String> validationErrors = new LinkedHashMap<>();
 
-        error.put("timestamp", LocalDateTime.now());
-        error.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        error.put("error", "Internal Server Error");
-        error.put("message", "An unexpected error occurred. Please try again later.");
+                ex.getBindingResult()
+                                .getFieldErrors()
+                                .forEach(error -> validationErrors.put(
+                                                error.getField(),
+                                                error.getDefaultMessage()));
 
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(error);
-    }
+                Map<String, Object> response = new LinkedHashMap<>();
+
+                response.put("timestamp", LocalDateTime.now());
+                response.put("status", HttpStatus.BAD_REQUEST.value());
+                response.put("error", "Validation Failed");
+                response.put("errors", validationErrors);
+
+                return ResponseEntity
+                                .badRequest()
+                                .body(response);
+        }
+
+        @ExceptionHandler(IllegalArgumentException.class)
+        public ResponseEntity<Map<String, Object>> handleIllegalArgument(
+                        IllegalArgumentException ex) {
+
+                Map<String, Object> response = new LinkedHashMap<>();
+
+                response.put("timestamp", LocalDateTime.now());
+                response.put("status", HttpStatus.BAD_REQUEST.value());
+                response.put("error", "Bad Request");
+                response.put("message", ex.getMessage());
+
+                return ResponseEntity
+                                .badRequest()
+                                .body(response);
+        }
+
+        @ExceptionHandler(Exception.class)
+        public ResponseEntity<Map<String, Object>> handleGenericException(
+                        Exception ex) {
+
+                log.error(
+                                "Unhandled server exception caught by GlobalExceptionHandler",
+                                ex);
+
+                Map<String, Object> error = new LinkedHashMap<>();
+
+                error.put("timestamp", LocalDateTime.now());
+                error.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+                error.put("error", "Internal Server Error");
+                error.put(
+                                "message",
+                                "An unexpected error occurred. Please try again later.");
+
+                return ResponseEntity
+                                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body(error);
+        }
 }

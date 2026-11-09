@@ -23,6 +23,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/audit/service/TicketAuditLogService.java`
 - `src/main/java/com/supportai/auth/controller/AuthController.java`
 - `src/main/java/com/supportai/auth/dto/AuthResponse.java`
+- `src/main/java/com/supportai/auth/dto/AuthResult.java`
 - `src/main/java/com/supportai/auth/dto/ChangePasswordRequest.java`
 - `src/main/java/com/supportai/auth/dto/ForgotPasswordRequest.java`
 - `src/main/java/com/supportai/auth/dto/ForgotPasswordResponse.java`
@@ -32,15 +33,20 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/auth/dto/ResetPasswordRequest.java`
 - `src/main/java/com/supportai/auth/dto/VerifyResetTokenResponse.java`
 - `src/main/java/com/supportai/auth/entity/PasswordResetToken.java`
+- `src/main/java/com/supportai/auth/entity/RefreshToken.java`
 - `src/main/java/com/supportai/auth/repository/PasswordResetTokenRepository.java`
+- `src/main/java/com/supportai/auth/repository/RefreshTokenRepository.java`
 - `src/main/java/com/supportai/auth/service/AuthService.java`
 - `src/main/java/com/supportai/auth/service/PasswordResetService.java`
+- `src/main/java/com/supportai/auth/service/RefreshTokenService.java`
 - `src/main/java/com/supportai/common/email/ConsoleEmailService.java`
 - `src/main/java/com/supportai/common/email/EmailService.java`
 - `src/main/java/com/supportai/config/PasswordConfig.java`
 - `src/main/java/com/supportai/exception/ForbiddenException.java`
 - `src/main/java/com/supportai/exception/GlobalExceptionHandler.java`
+- `src/main/java/com/supportai/exception/InvalidRefreshTokenException.java`
 - `src/main/java/com/supportai/exception/ResourceNotFoundException.java`
+- `src/main/java/com/supportai/exception/TokenAlreadyRotatedException.java`
 - `src/main/java/com/supportai/health/HealthController.java`
 - `src/main/java/com/supportai/notification/controller/NotificationController.java`
 - `src/main/java/com/supportai/notification/dto/NotificationResponse.java`
@@ -137,6 +143,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `POST` `/api/auth/change-password` | `AuthController`
 - `POST` `/api/auth/forgot-password` | `AuthController`
 - `POST` `/api/auth/login` | `AuthController`
+- `POST` `/api/auth/logout` | `AuthController`
 - `POST` `/api/auth/refresh-token` | `AuthController`
 - `POST` `/api/auth/register` | `AuthController`
 - `POST` `/api/auth/reset-password` | `AuthController`
@@ -147,7 +154,7 @@ The project focuses on secure authentication, ticket management, database persis
 
 ### Test Results
 
-**Available test report totals:** 336 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 372 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview
