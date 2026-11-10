@@ -23,6 +23,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.supportai.ticket.dto.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -228,12 +233,14 @@ class TicketCommentServiceTest {
                 () -> ticketCommentService.getComments(
                         ticketId,
                         requestingAgentId,
-                        Role.AGENT
+                        Role.AGENT,
+                        0,
+                        20
                 )
         );
 
         verify(commentRepository, never())
-                .findByTicketId(anyLong(), any(Sort.class));
+                .findByTicketId(anyLong(), any(Pageable.class));
     }
 
     @Test
@@ -247,7 +254,9 @@ class TicketCommentServiceTest {
                 () -> ticketCommentService.getComments(
                         ticketId,
                         30L,
-                        Role.AGENT
+                        Role.AGENT,
+                        0,
+                        20
                 )
         );
 
@@ -265,7 +274,9 @@ class TicketCommentServiceTest {
                 () -> ticketCommentService.getComments(
                         ticketId,
                         customerId,
-                        Role.CUSTOMER
+                        Role.CUSTOMER,
+                        0,
+                        20
                 )
         );
 
@@ -284,7 +295,9 @@ class TicketCommentServiceTest {
                 () -> ticketCommentService.getComments(
                         missingTicketId,
                         customerId,
-                        Role.CUSTOMER
+                        Role.CUSTOMER,
+                        0,
+                        20
                 )
         );
 
@@ -304,7 +317,9 @@ class TicketCommentServiceTest {
                 () -> ticketCommentService.getComments(
                         ticketId,
                         customerId,
-                        Role.CUSTOMER
+                        Role.CUSTOMER,
+                        0,
+                        20
                 )
         );
 
@@ -481,43 +496,60 @@ class TicketCommentServiceTest {
         when(secondComment.getContent()).thenReturn("Second comment");
         when(secondComment.getCreatedAt()).thenReturn(secondTime);
 
+        Page<TicketComment> commentPage = new PageImpl<>(
+                List.of(firstComment, secondComment),
+                PageRequest.of(0, 20),
+                2
+        );
+
         when(commentRepository.findByTicketId(
                 eq(ticketId),
-                any(Sort.class)
-        )).thenReturn(List.of(firstComment, secondComment));
+                any(Pageable.class)
+        )).thenReturn(commentPage);
 
-        List<CommentResponse> responses =
+        PageResponse<CommentResponse> response =
                 ticketCommentService.getComments(
                         ticketId,
                         customerId,
-                        Role.CUSTOMER
+                        Role.CUSTOMER,
+                        0,
+                        20
                 );
 
-        assertEquals(2, responses.size());
+        assertEquals(2, response.content().size());
+        assertEquals(0, response.page());
+        assertEquals(20, response.size());
+        assertEquals(2L, response.totalElements());
+        assertEquals(1, response.totalPages());
+        assertTrue(response.first());
+        assertTrue(response.last());
 
-        assertEquals(1L, responses.get(0).id());
-        assertEquals("First comment", responses.get(0).content());
-        assertEquals(firstTime, responses.get(0).createdAt());
+        assertEquals(1L, response.content().get(0).id());
+        assertEquals("First comment", response.content().get(0).content());
+        assertEquals(firstTime, response.content().get(0).createdAt());
 
-        assertEquals(2L, responses.get(1).id());
-        assertEquals("Second comment", responses.get(1).content());
-        assertEquals(secondTime, responses.get(1).createdAt());
+        assertEquals(2L, response.content().get(1).id());
+        assertEquals("Second comment", response.content().get(1).content());
+        assertEquals(secondTime, response.content().get(1).createdAt());
 
-        ArgumentCaptor<Sort> sortCaptor =
-                ArgumentCaptor.forClass(Sort.class);
+        ArgumentCaptor<Pageable> pageableCaptor =
+                ArgumentCaptor.forClass(Pageable.class);
 
         verify(commentRepository).findByTicketId(
                 eq(ticketId),
-                sortCaptor.capture()
+                pageableCaptor.capture()
         );
 
-        Sort sort = sortCaptor.getValue();
+        Pageable pageable = pageableCaptor.getValue();
+        assertEquals(0, pageable.getPageNumber());
+        assertEquals(20, pageable.getPageSize());
 
+        Sort sort = pageable.getSort();
+        assertNotNull(sort);
         assertEquals(
                 Sort.Direction.ASC,
                 sort.getOrderFor("createdAt").getDirection()
         );
-
         assertEquals(
                 Sort.Direction.ASC,
                 sort.getOrderFor("id").getDirection()
@@ -528,24 +560,220 @@ class TicketCommentServiceTest {
     void adminShouldRetrieveCommentsForAnyTicket() {
         stubTicketFound();
 
+        Page<TicketComment> emptyPage = new PageImpl<>(
+                List.of(),
+                PageRequest.of(0, 20),
+                0
+        );
+
         when(commentRepository.findByTicketId(
                 eq(ticketId),
-                any(Sort.class)
-        )).thenReturn(List.of());
+                any(Pageable.class)
+        )).thenReturn(emptyPage);
 
-        List<CommentResponse> responses =
+        PageResponse<CommentResponse> response =
                 ticketCommentService.getComments(
                         ticketId,
                         1L,
-                        Role.ADMIN
+                        Role.ADMIN,
+                        0,
+                        20
                 );
 
-        assertNotNull(responses);
-        assertTrue(responses.isEmpty());
+        assertNotNull(response);
+        assertTrue(response.content().isEmpty());
+        assertEquals(0, response.page());
+        assertEquals(20, response.size());
+        assertEquals(0L, response.totalElements());
+        assertEquals(0, response.totalPages());
+        assertTrue(response.first());
+        assertTrue(response.last());
 
         verify(commentRepository).findByTicketId(
                 eq(ticketId),
-                any(Sort.class)
+                any(Pageable.class)
         );
+    }
+
+    @Test
+    void shouldReturnFirstPageOfComments() {
+        stubTicketFound();
+
+        when(customer.getId()).thenReturn(customerId);
+        when(customer.getName()).thenReturn("Test Customer");
+
+        TicketComment c1 = mock(TicketComment.class);
+        TicketComment c2 = mock(TicketComment.class);
+
+        when(c1.getId()).thenReturn(10L);
+        when(c1.getTicket()).thenReturn(ticket);
+        when(c1.getAuthor()).thenReturn(customer);
+        when(c1.getContent()).thenReturn("Comment 1");
+        when(c1.getCreatedAt()).thenReturn(LocalDateTime.now().minusMinutes(10));
+
+        when(c2.getId()).thenReturn(11L);
+        when(c2.getTicket()).thenReturn(ticket);
+        when(c2.getAuthor()).thenReturn(customer);
+        when(c2.getContent()).thenReturn("Comment 2");
+        when(c2.getCreatedAt()).thenReturn(LocalDateTime.now().minusMinutes(5));
+
+        Page<TicketComment> firstPage = new PageImpl<>(
+                List.of(c1, c2),
+                PageRequest.of(0, 2),
+                5
+        );
+
+        when(commentRepository.findByTicketId(eq(ticketId), any(Pageable.class)))
+                .thenReturn(firstPage);
+
+        PageResponse<CommentResponse> response = ticketCommentService.getComments(
+                ticketId,
+                customerId,
+                Role.CUSTOMER,
+                0,
+                2
+        );
+
+        assertEquals(2, response.content().size());
+        assertEquals(0, response.page());
+        assertEquals(2, response.size());
+        assertEquals(5L, response.totalElements());
+        assertEquals(3, response.totalPages());
+        assertTrue(response.first());
+        assertFalse(response.last());
+    }
+
+    @Test
+    void shouldReturnSecondPageOfComments() {
+        stubTicketFound();
+
+        when(customer.getId()).thenReturn(customerId);
+        when(customer.getName()).thenReturn("Test Customer");
+
+        TicketComment c3 = mock(TicketComment.class);
+        TicketComment c4 = mock(TicketComment.class);
+
+        when(c3.getId()).thenReturn(12L);
+        when(c3.getTicket()).thenReturn(ticket);
+        when(c3.getAuthor()).thenReturn(customer);
+        when(c3.getContent()).thenReturn("Comment 3");
+        when(c3.getCreatedAt()).thenReturn(LocalDateTime.now().minusMinutes(3));
+
+        when(c4.getId()).thenReturn(13L);
+        when(c4.getTicket()).thenReturn(ticket);
+        when(c4.getAuthor()).thenReturn(customer);
+        when(c4.getContent()).thenReturn("Comment 4");
+        when(c4.getCreatedAt()).thenReturn(LocalDateTime.now().minusMinutes(1));
+
+        Page<TicketComment> secondPage = new PageImpl<>(
+                List.of(c3, c4),
+                PageRequest.of(1, 2),
+                5
+        );
+
+        when(commentRepository.findByTicketId(eq(ticketId), any(Pageable.class)))
+                .thenReturn(secondPage);
+
+        PageResponse<CommentResponse> response = ticketCommentService.getComments(
+                ticketId,
+                customerId,
+                Role.CUSTOMER,
+                1,
+                2
+        );
+
+        assertEquals(2, response.content().size());
+        assertEquals(1, response.page());
+        assertEquals(2, response.size());
+        assertEquals(5L, response.totalElements());
+        assertEquals(3, response.totalPages());
+        assertFalse(response.first());
+        assertFalse(response.last());
+    }
+
+    @Test
+    void shouldReturnEmptyPageMetadataWhenNoComments() {
+        stubTicketFound();
+
+        when(customer.getId()).thenReturn(customerId);
+
+        Page<TicketComment> emptyPage = new PageImpl<>(
+                List.of(),
+                PageRequest.of(0, 20),
+                0
+        );
+
+        when(commentRepository.findByTicketId(eq(ticketId), any(Pageable.class)))
+                .thenReturn(emptyPage);
+
+        PageResponse<CommentResponse> response = ticketCommentService.getComments(
+                ticketId,
+                customerId,
+                Role.CUSTOMER,
+                0,
+                20
+        );
+
+        assertTrue(response.content().isEmpty());
+        assertEquals(0, response.page());
+        assertEquals(20, response.size());
+        assertEquals(0L, response.totalElements());
+        assertEquals(0, response.totalPages());
+        assertTrue(response.first());
+        assertTrue(response.last());
+    }
+
+    @Test
+    void shouldThrowWhenPageIsNegative() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> ticketCommentService.getComments(
+                        ticketId,
+                        customerId,
+                        Role.CUSTOMER,
+                        -1,
+                        20
+                )
+        );
+
+        assertEquals("Page number cannot be negative", ex.getMessage());
+        verifyNoInteractions(ticketRepository);
+        verifyNoInteractions(commentRepository);
+    }
+
+    @Test
+    void shouldThrowWhenSizeIsZero() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> ticketCommentService.getComments(
+                        ticketId,
+                        customerId,
+                        Role.CUSTOMER,
+                        0,
+                        0
+                )
+        );
+
+        assertEquals("Page size must be between 1 and 100", ex.getMessage());
+        verifyNoInteractions(ticketRepository);
+        verifyNoInteractions(commentRepository);
+    }
+
+    @Test
+    void shouldThrowWhenSizeExceedsMaximum() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> ticketCommentService.getComments(
+                        ticketId,
+                        customerId,
+                        Role.CUSTOMER,
+                        0,
+                        101
+                )
+        );
+
+        assertEquals("Page size must be between 1 and 100", ex.getMessage());
+        verifyNoInteractions(ticketRepository);
+        verifyNoInteractions(commentRepository);
     }
 }

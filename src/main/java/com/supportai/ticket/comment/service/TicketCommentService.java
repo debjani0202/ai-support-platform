@@ -14,6 +14,10 @@ import com.supportai.user.entity.Role;
 import com.supportai.user.entity.User;
 import com.supportai.user.repository.UserRepository;
 
+import com.supportai.ticket.dto.PageResponse;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,26 +97,55 @@ public TicketCommentService(
         return mapToResponse(savedComment);
     }
 
-    // Return a ticket's comments from oldest to newest.
-    @Transactional(readOnly = true)  //@Transactional annotation keeps database operations within a transaction
-    //checks the same permissions and returns comments chronologically.
-    public List<CommentResponse> getComments(
+    // Return a ticket's comments with pagination in chronological order.
+    @Transactional(readOnly = true)
+    public PageResponse<CommentResponse> getComments(
             Long ticketId,
             Long currentUserId,
-            Role currentUserRole) {
+            Role currentUserRole,
+            int page,
+            int size) {
+
+        if (page < 0) {
+            throw new IllegalArgumentException(
+                    "Page number cannot be negative"
+            );
+        }
+
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException(
+                    "Page size must be between 1 and 100"
+            );
+        }
 
         Ticket ticket = findTicketById(ticketId);
 
         validateTicketAccess(ticket, currentUserId, currentUserRole);
 
-        Sort chronologicalOrder = Sort.by(
-                Sort.Order.asc("createdAt"),
-                Sort.Order.asc("id"));
+        PageRequest pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.asc("createdAt"),
+                        Sort.Order.asc("id")
+                )
+        );
 
-        return commentRepository.findByTicketId(ticketId, chronologicalOrder)
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
+        Page<TicketComment> commentPage =
+                commentRepository.findByTicketId(ticketId, pageable);
+
+        return new PageResponse<>(
+                commentPage.getContent()
+                        .stream()
+                        .map(this::mapToResponse)
+                        .toList(),
+                commentPage.getNumber(),
+                commentPage.getSize(),
+                commentPage.getTotalElements(),
+                commentPage.getTotalPages(),
+                commentPage.isFirst(),
+                commentPage.isLast()
+        );
     }
 
     private Ticket findTicketById(Long ticketId) {

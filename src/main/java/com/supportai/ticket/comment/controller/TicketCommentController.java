@@ -3,6 +3,7 @@ package com.supportai.ticket.comment.controller;
 
 import com.supportai.exception.ForbiddenException;
 import com.supportai.ticket.comment.dto.CommentResponse;
+import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.comment.dto.CreateCommentRequest;
 import com.supportai.ticket.comment.service.TicketCommentService;
 import com.supportai.user.entity.Role;
@@ -43,10 +44,12 @@ public class TicketCommentController {
                 currentUserRole);
     }
 
-    // Retrieve the conversation history for a ticket.
+    // Retrieve the conversation history for a ticket with pagination.
     @GetMapping
-    public List<CommentResponse> getComments(
+    public PageResponse<CommentResponse> getComments(
             @PathVariable Long ticketId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
 
         Long currentUserId = Long.valueOf(authentication.getName());
@@ -55,7 +58,9 @@ public class TicketCommentController {
         return commentService.getComments(
                 ticketId,
                 currentUserId,
-                currentUserRole);
+                currentUserRole,
+                page,
+                size);
     }
 
     // Extract the application role from Spring Security's authorities.

@@ -3,6 +3,8 @@ package com.supportai.ticket.comment.repository;
 
 import com.supportai.ticket.comment.entity.TicketComment;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -16,5 +18,11 @@ public interface TicketCommentRepository
     List<TicketComment> findByTicketId(
             Long ticketId,
             Sort sort
+    );
+
+    // Retrieve a ticket's comments with pagination.
+    Page<TicketComment> findByTicketId(
+            Long ticketId,
+            Pageable pageable
     );
 }
