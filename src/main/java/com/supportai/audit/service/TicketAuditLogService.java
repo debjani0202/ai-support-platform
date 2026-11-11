@@ -6,10 +6,13 @@ import com.supportai.audit.entity.TicketAuditLog;
 import com.supportai.audit.repository.TicketAuditLogRepository;
 import com.supportai.exception.ForbiddenException;
 import com.supportai.exception.ResourceNotFoundException;
+import com.supportai.ticket.dto.PageResponse;
 import com.supportai.ticket.entity.Ticket;
 import com.supportai.ticket.repository.TicketRepository;
 import com.supportai.user.entity.Role;
 import com.supportai.user.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,14 +105,28 @@ public class TicketAuditLogService {
     }
 
     /**
-     * Retrieves audit history only if the authenticated user
+     * Retrieves audit history with pagination only if the authenticated user
      * is authorized to access the requested ticket.
      */
     @Transactional(readOnly = true)
-    public List<TicketAuditLogResponse> getHistory(
+    public PageResponse<TicketAuditLogResponse> getHistory(
             Long ticketId,
             Long currentUserId,
-            Role currentUserRole) {
+            Role currentUserRole,
+            int page,
+            int size) {
+
+        if (page < 0) {
+            throw new IllegalArgumentException(
+                    "Page number cannot be negative"
+            );
+        }
+
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException(
+                    "Page size must be between 1 and 100"
+            );
+        }
 
         // Find the requested ticket or return a 404 response
         // through the application's ResourceNotFoundException handler.
@@ -157,18 +174,30 @@ public class TicketAuditLogService {
 
         // Sort oldest first. The ID provides deterministic ordering
         // when multiple records have the same timestamp.
-        Sort chronologicalOrder = Sort.by(
-                Sort.Order.asc("createdAt"),
-                Sort.Order.asc("id")
+        PageRequest pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.asc("createdAt"),
+                        Sort.Order.asc("id")
+                )
         );
 
-        // Convert database entities into DTOs before returning them.
-        return auditLogRepository.findByTicketId(
-                        ticketId,
-                        chronologicalOrder
-                )
-                .stream()
-                .map(TicketAuditLogResponse::from)
-                .toList();
+        Page<TicketAuditLog> auditPage =
+                auditLogRepository.findByTicketId(ticketId, pageable);
+
+        // Convert database entities into DTOs and wrap in PageResponse.
+        return new PageResponse<>(
+                auditPage.getContent()
+                        .stream()
+                        .map(TicketAuditLogResponse::from)
+                        .toList(),
+                auditPage.getNumber(),
+                auditPage.getSize(),
+                auditPage.getTotalElements(),
+                auditPage.getTotalPages(),
+                auditPage.isFirst(),
+                auditPage.isLast()
+        );
     }
 }

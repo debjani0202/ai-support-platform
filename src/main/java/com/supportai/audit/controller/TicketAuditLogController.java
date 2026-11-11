@@ -3,15 +3,15 @@ package com.supportai.audit.controller;
 
 import com.supportai.audit.dto.TicketAuditLogResponse;
 import com.supportai.audit.service.TicketAuditLogService;
+import com.supportai.ticket.dto.PageResponse;
 import com.supportai.user.entity.Role;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * Exposes the API endpoint for viewing ticket audit history.
@@ -28,12 +28,14 @@ public class TicketAuditLogController {
     }
 
     /**
-     * Returns audit history for a ticket the authenticated user
+     * Returns audit history with pagination for a ticket the authenticated user
      * is authorized to access.
      */
     @GetMapping
-    public List<TicketAuditLogResponse> getHistory(
+    public PageResponse<TicketAuditLogResponse> getHistory(
             @PathVariable Long ticketId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
 
         // The JWT subject contains the authenticated user's database ID.
@@ -54,7 +56,9 @@ public class TicketAuditLogController {
         return auditLogService.getHistory(
                 ticketId,
                 currentUserId,
-                currentUserRole
+                currentUserRole,
+                page,
+                size
         );
     }
 }

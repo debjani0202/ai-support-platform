@@ -2,6 +2,8 @@
 package com.supportai.audit.repository;
 
 import com.supportai.audit.entity.TicketAuditLog;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -19,4 +21,9 @@ public interface TicketAuditLogRepository
      * The caller supplies the sort order.
      */
     List<TicketAuditLog> findByTicketId(Long ticketId, Sort sort);
+
+    /**
+     * Retrieves audit records for a specific ticket with pagination.
+     */
+    Page<TicketAuditLog> findByTicketId(Long ticketId, Pageable pageable);
 }
