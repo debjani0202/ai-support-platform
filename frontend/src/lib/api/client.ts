@@ -118,10 +118,34 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
+/**
+ * Removes default JSON Content-Type headers when sending FormData so Axios and the browser
+ * emit a proper multipart/form-data Content-Type header with boundary.
+ */
+function stripJsonContentTypeForFormData(config: CustomRequestConfig): void {
+  if (typeof FormData === 'undefined' || !(config.data instanceof FormData) || !config.headers) {
+    return;
+  }
+
+  const headers = config.headers as unknown as {
+    delete?: (name: string) => void;
+    [key: string]: unknown;
+  };
+
+  if (typeof headers.delete === 'function') {
+    headers.delete('Content-Type');
+    headers.delete('content-type');
+  }
+  delete headers['Content-Type'];
+  delete headers['content-type'];
+}
+
 // Request Interceptor: Attach Bearer token on protected endpoints, exclude public endpoints
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const customConfig = config as CustomRequestConfig;
+
+    stripJsonContentTypeForFormData(customConfig);
 
     // Exclude all public endpoints from Authorization header
     if (isPublicEndpoint(customConfig.url, customConfig.baseURL)) {
@@ -161,22 +185,109 @@ function processQueue(error: unknown, token: string | null = null): void {
   failedQueue = [];
 }
 
-function normalizeError(error: AxiosError<ApiErrorResponse> | any) {
-  const errorData = error?.response?.data;
+interface ParsedErrorPayload {
+  error?: string;
+  errorCode?: string;
+  message?: string;
+  errors?: Record<string, string>;
+}
+
+const MAX_JSON_BLOB_ERROR_BYTES = 1_048_576;
+
+function extractTrustedErrorPayload(rawPayload: unknown): ParsedErrorPayload | undefined {
+  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
+    return undefined;
+  }
+
+  const record = rawPayload as Record<string, unknown>;
+  const errors =
+    record.errors && typeof record.errors === 'object' && !Array.isArray(record.errors)
+      ? Object.entries(record.errors as Record<string, unknown>).reduce<Record<string, string>>(
+          (acc, [key, value]) => {
+            if (typeof value === 'string') {
+              acc[key] = value;
+            }
+            return acc;
+          },
+          {}
+        )
+      : undefined;
+
+  return {
+    error: typeof record.error === 'string' ? record.error : undefined,
+    errorCode: typeof record.errorCode === 'string' ? record.errorCode : undefined,
+    message: typeof record.message === 'string' ? record.message : undefined,
+    errors: errors && Object.keys(errors).length > 0 ? errors : undefined,
+  };
+}
+
+async function decodeErrorPayloadAsync(errorData: unknown): Promise<ParsedErrorPayload | undefined> {
+  if (typeof Blob !== 'undefined' && errorData instanceof Blob) {
+    const mime = (errorData.type || '').toLowerCase();
+    const looksPotentiallyJson = mime === '' || mime.includes('json') || mime.startsWith('text/plain');
+    if (!looksPotentiallyJson || errorData.size === 0 || errorData.size > MAX_JSON_BLOB_ERROR_BYTES) {
+      return undefined;
+    }
+
+    try {
+      const text =
+        typeof errorData.text === 'function'
+          ? await errorData.text()
+          : await new Response(errorData).text();
+      if (!text || !text.trim()) {
+        return undefined;
+      }
+      return extractTrustedErrorPayload(JSON.parse(text));
+    } catch {
+      return undefined;
+    }
+  }
+
+  return extractTrustedErrorPayload(errorData);
+}
+
+interface ErrorLike {
+  status?: number;
+  error?: string;
+  errorCode?: string;
+  message?: string;
+  errors?: Record<string, string>;
+  raw?: unknown;
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+}
+
+function asErrorLike(error: unknown): ErrorLike {
+  return error && typeof error === 'object' ? (error as ErrorLike) : {};
+}
+
+function formatNormalizedError(error: unknown, errorData?: ParsedErrorPayload) {
+  const errObj = asErrorLike(error);
   const message =
     errorData?.message ||
     (errorData?.errors ? Object.values(errorData.errors).join(', ') : null) ||
-    error?.message ||
+    errObj.message ||
     'An unexpected network error occurred';
 
   return {
-    status: error?.response?.status ?? error?.status ?? 500,
-    error: errorData?.error ?? error?.error ?? 'Error',
-    errorCode: errorData?.errorCode ?? error?.errorCode,
+    status: errObj.response?.status ?? errObj.status ?? 500,
+    error: errorData?.error ?? errObj.error ?? 'Error',
+    errorCode: errorData?.errorCode ?? errObj.errorCode,
     message,
-    errors: errorData?.errors ?? error?.errors,
-    raw: error?.raw ?? error,
+    errors: errorData?.errors ?? errObj.errors,
+    raw: errObj.raw ?? error,
   };
+}
+
+async function normalizeErrorAsync(error: unknown) {
+  const rawData = asErrorLike(error).response?.data;
+  if (typeof Blob !== 'undefined' && rawData instanceof Blob) {
+    const parsedBlobData = await decodeErrorPayloadAsync(rawData);
+    return formatNormalizedError(error, parsedBlobData);
+  }
+  return formatNormalizedError(error, extractTrustedErrorPayload(rawData));
 }
 
 /**
@@ -340,7 +451,7 @@ apiClient.interceptors.response.use(
 
     // A. Ignore non-401 errors, or requests without config
     if (!originalRequest || status !== 401) {
-      return Promise.reject(normalizeError(error));
+      return Promise.reject(await normalizeErrorAsync(error));
     }
 
     // B. Check exact public endpoints
@@ -352,12 +463,12 @@ apiClient.interceptors.response.use(
           window.dispatchEvent(new CustomEvent('auth:session-expired'));
         }
       }
-      return Promise.reject(normalizeError(error));
+      return Promise.reject(await normalizeErrorAsync(error));
     }
 
     // C. Protected-request refresh guard: only refresh if request sent an access token
     if (!originalRequest._sentToken) {
-      return Promise.reject(normalizeError(error));
+      return Promise.reject(await normalizeErrorAsync(error));
     }
 
     // D. Single-Retry Guard: prevent infinite retry loops
@@ -367,7 +478,7 @@ apiClient.interceptors.response.use(
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('auth:session-expired'));
       }
-      return Promise.reject(normalizeError(error));
+      return Promise.reject(await normalizeErrorAsync(error));
     }
     originalRequest._retry = true;
 
@@ -383,7 +494,7 @@ apiClient.interceptors.response.use(
             resolve(apiClient(originalRequest));
           },
           reject: (err: unknown) => {
-            reject(normalizeError(err));
+            void normalizeErrorAsync(err).then(reject);
           },
         });
       });
@@ -399,7 +510,7 @@ apiClient.interceptors.response.use(
       // Validate epoch before draining queue and replaying
       if (capturedEpoch !== currentAuthEpoch) {
         processQueue(new Error('Refresh aborted: session ended'), null);
-        return Promise.reject(normalizeError(error));
+        return Promise.reject(await normalizeErrorAsync(error));
       }
 
       processQueue(null, newAccessToken);
@@ -423,7 +534,7 @@ apiClient.interceptors.response.use(
       }
 
       processQueue(refreshErr, null);
-      return Promise.reject(normalizeError(refreshErr || error));
+      return Promise.reject(await normalizeErrorAsync(refreshErr || error));
     } finally {
       isRefreshing = false;
     }
