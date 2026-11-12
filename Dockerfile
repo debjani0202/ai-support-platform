@@ -21,7 +21,9 @@ FROM eclipse-temurin:25-jre AS runner
 WORKDIR /app
 
 # Run as a dedicated non-root system user for security hardening
-RUN groupadd -r spring && useradd -r -g spring spring
+RUN groupadd -r spring && useradd -r -g spring spring \
+    && mkdir -p /app/uploads/attachments \
+    && chown -R spring:spring /app/uploads
 USER spring:spring
 
 # Copy the generated Spring Boot fat JAR from the builder stage

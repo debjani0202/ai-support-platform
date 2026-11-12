@@ -42,6 +42,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/common/email/ConsoleEmailService.java`
 - `src/main/java/com/supportai/common/email/EmailService.java`
 - `src/main/java/com/supportai/config/PasswordConfig.java`
+- `src/main/java/com/supportai/exception/ConflictException.java`
 - `src/main/java/com/supportai/exception/ForbiddenException.java`
 - `src/main/java/com/supportai/exception/GlobalExceptionHandler.java`
 - `src/main/java/com/supportai/exception/InvalidRefreshTokenException.java`
@@ -56,6 +57,15 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/security/SecurityConfig.java`
 - `src/main/java/com/supportai/security/jwt/JwtConfig.java`
 - `src/main/java/com/supportai/security/jwt/JwtService.java`
+- `src/main/java/com/supportai/ticket/attachment/config/AttachmentStorageProperties.java`
+- `src/main/java/com/supportai/ticket/attachment/controller/TicketAttachmentController.java`
+- `src/main/java/com/supportai/ticket/attachment/dto/AttachmentDownload.java`
+- `src/main/java/com/supportai/ticket/attachment/dto/AttachmentResponse.java`
+- `src/main/java/com/supportai/ticket/attachment/entity/TicketAttachment.java`
+- `src/main/java/com/supportai/ticket/attachment/repository/TicketAttachmentRepository.java`
+- `src/main/java/com/supportai/ticket/attachment/service/AttachmentStorageService.java`
+- `src/main/java/com/supportai/ticket/attachment/service/TicketAttachmentService.java`
+- `src/main/java/com/supportai/ticket/attachment/validation/AttachmentFileValidator.java`
 - `src/main/java/com/supportai/ticket/comment/controller/TicketCommentController.java`
 - `src/main/java/com/supportai/ticket/comment/dto/CommentResponse.java`
 - `src/main/java/com/supportai/ticket/comment/dto/CreateCommentRequest.java`
@@ -119,6 +129,7 @@ The project focuses on secure authentication, ticket management, database persis
 ### Discovered API Endpoints
 
 - `DELETE` `/api/tickets/{id}` | `TicketController`
+- `DELETE` `/api/tickets/{ticketId}/attachments/{attachmentId}` | `TicketAttachmentController`
 - `GET` `/api/agent-requests/me` | `AgentRequestController`
 - `GET` `/api/agent-requests` | `AgentRequestController`
 - `GET` `/api/auth/verify-reset-token` | `AuthController`
@@ -127,6 +138,8 @@ The project focuses on secure authentication, ticket management, database persis
 - `GET` `/api/notifications` | `NotificationController`
 - `GET` `/api/tickets/stats` | `TicketController`
 - `GET` `/api/tickets/{id}` | `TicketController`
+- `GET` `/api/tickets/{ticketId}/attachments/{attachmentId}/download` | `TicketAttachmentController`
+- `GET` `/api/tickets/{ticketId}/attachments` | `TicketAttachmentController`
 - `GET` `/api/tickets/{ticketId}/audit-logs` | `TicketAuditLogController`
 - `GET` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
 - `GET` `/api/tickets` | `TicketController`
@@ -147,6 +160,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `POST` `/api/auth/refresh-token` | `AuthController`
 - `POST` `/api/auth/register` | `AuthController`
 - `POST` `/api/auth/reset-password` | `AuthController`
+- `POST` `/api/tickets/{ticketId}/attachments` | `TicketAttachmentController`
 - `POST` `/api/tickets/{ticketId}/comments` | `TicketCommentController`
 - `POST` `/api/tickets` | `TicketController`
 - `POST` `/api/users` | `UserController`
@@ -154,7 +168,7 @@ The project focuses on secure authentication, ticket management, database persis
 
 ### Test Results
 
-**Available test report totals:** 397 tests, 0 failures, 0 errors, 0 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 449 tests, 0 failures, 0 errors, 1 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview

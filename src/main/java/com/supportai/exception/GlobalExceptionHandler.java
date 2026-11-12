@@ -11,6 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -109,6 +112,22 @@ public class GlobalExceptionHandler {
                                 .body(error);
         }
 
+        @ExceptionHandler(ConflictException.class)
+        public ResponseEntity<Map<String, Object>> handleConflict(
+                        ConflictException ex) {
+
+                Map<String, Object> error = new LinkedHashMap<>();
+
+                error.put("timestamp", LocalDateTime.now());
+                error.put("status", HttpStatus.CONFLICT.value());
+                error.put("error", "Conflict");
+                error.put("message", ex.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.CONFLICT)
+                                .body(error);
+        }
+
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<Map<String, Object>> handleValidation(
                         MethodArgumentNotValidException ex) {
@@ -146,6 +165,72 @@ public class GlobalExceptionHandler {
 
                 return ResponseEntity
                                 .badRequest()
+                                .body(response);
+        }
+
+        @ExceptionHandler(MaxUploadSizeExceededException.class)
+        public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(
+                        MaxUploadSizeExceededException ex) {
+
+                log.warn("Rejected oversized multipart upload request");
+                return buildUploadSizeExceededResponse();
+        }
+
+        @ExceptionHandler(MultipartException.class)
+        public ResponseEntity<Map<String, Object>> handleMultipartException(
+                        MultipartException ex) {
+
+                if (ex instanceof MaxUploadSizeExceededException
+                                || ex.contains(MaxUploadSizeExceededException.class)) {
+                        log.warn("Rejected oversized multipart upload request wrapped in MultipartException");
+                        return buildUploadSizeExceededResponse();
+                }
+
+                log.warn("Malformed multipart request rejected");
+
+                Map<String, Object> response = new LinkedHashMap<>();
+
+                response.put("timestamp", LocalDateTime.now());
+                response.put("status", HttpStatus.BAD_REQUEST.value());
+                response.put("error", "Bad Request");
+                response.put("message", "Malformed multipart upload request.");
+
+                return ResponseEntity
+                                .badRequest()
+                                .body(response);
+        }
+
+        @ExceptionHandler(MissingServletRequestPartException.class)
+        public ResponseEntity<Map<String, Object>> handleMissingServletRequestPart(
+                        MissingServletRequestPartException ex) {
+
+                String partName = ex.getRequestPartName();
+                String message = (partName != null && partName.matches("^[a-zA-Z0-9_-]{1,64}$"))
+                                ? "Required upload part '" + partName + "' is missing."
+                                : "Required file upload part is missing.";
+
+                Map<String, Object> response = new LinkedHashMap<>();
+
+                response.put("timestamp", LocalDateTime.now());
+                response.put("status", HttpStatus.BAD_REQUEST.value());
+                response.put("error", "Bad Request");
+                response.put("message", message);
+
+                return ResponseEntity
+                                .badRequest()
+                                .body(response);
+        }
+
+        private ResponseEntity<Map<String, Object>> buildUploadSizeExceededResponse() {
+                Map<String, Object> response = new LinkedHashMap<>();
+
+                response.put("timestamp", LocalDateTime.now());
+                response.put("status", HttpStatus.CONTENT_TOO_LARGE.value());
+                response.put("error", "Payload Too Large");
+                response.put("message", "Uploaded file exceeds the maximum allowed size of 10 MB.");
+
+                return ResponseEntity
+                                .status(HttpStatus.CONTENT_TOO_LARGE)
                                 .body(response);
         }
 

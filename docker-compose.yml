@@ -34,8 +34,11 @@ services:
       APP_AI_OLLAMA_BASE_URL: ${APP_AI_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:4173}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
+      APP_ATTACHMENTS_STORAGE_DIR: /app/uploads/attachments
     ports:
       - "${PORT:-8080}:8080"
+    volumes:
+      - attachment_data:/app/uploads/attachments
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -43,6 +46,7 @@ services:
 
 volumes:
   postgres_data:
+  attachment_data:
 
 networks:
   ai-support-network:

@@ -122,6 +122,8 @@ public class SecurityConfig {
                 "X-Requested-With"
         ));
 
+        configuration.setExposedHeaders(List.of("Content-Disposition"));
+
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =

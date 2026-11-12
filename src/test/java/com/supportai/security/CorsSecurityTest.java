@@ -110,10 +110,45 @@ class CorsSecurityTest {
     }
 
     @Test
+    void allowedOriginAuthenticatedRequestExposesContentDispositionHeader() throws Exception {
+        when(ticketService.getTickets(
+                anyInt(), anyInt(), anyString(), anyString(),
+                isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(1L), eq(Role.CUSTOMER)))
+                .thenReturn(new PageResponse<>(List.of(), 0, 10, 0, 0, true, true));
+
+        mockMvc.perform(get("/api/tickets")
+                        .header("Origin", "http://localhost:5173")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+                .andExpect(header().string("Access-Control-Expose-Headers", "Content-Disposition"));
+    }
+
+    @Test
     void disallowedOriginDoesNotReceiveAllowOriginHeader() throws Exception {
         mockMvc.perform(options("/api/tickets")
                         .header("Origin", "http://untrusted-domain.com")
                         .header("Access-Control-Request-Method", "GET"))
-                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"))
+                .andExpect(header().doesNotExist("Access-Control-Allow-Methods"))
+                .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"))
+                .andExpect(header().doesNotExist("Access-Control-Expose-Headers"));
+
+        mockMvc.perform(get("/api/tickets")
+                        .header("Origin", "http://untrusted-domain.com")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("1")
+                                .claim("role", "CUSTOMER"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"))
+                .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"))
+                .andExpect(header().doesNotExist("Access-Control-Expose-Headers"));
     }
 }
