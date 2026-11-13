@@ -170,7 +170,9 @@ class TicketControllerSecurityTest {
                         .with(jwt().jwt(jwt -> jwt
                                 .subject("99")
                                 .claim("role", "ADMIN"))
-                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                                .authorities(
+                                        new SimpleGrantedAuthority("FACTOR_BEARER"),
+                                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

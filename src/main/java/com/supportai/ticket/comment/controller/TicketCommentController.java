@@ -1,4 +1,5 @@
-//Exposes the HTTP endpoints for adding and reading comments
+
+// Exposes the HTTP endpoints for adding and reading comments
 package com.supportai.ticket.comment.controller;
 
 import com.supportai.exception.ForbiddenException;
@@ -13,8 +14,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/tickets/{ticketId}/comments")
@@ -65,13 +64,21 @@ public class TicketCommentController {
 
     // Extract the application role from Spring Security's authorities.
     private Role getCurrentUserRole(Authentication authentication) {
-        String authority = authentication.getAuthorities()
-                .stream()
-                .findFirst()
-                .orElseThrow(() ->
-                        new ForbiddenException("User role not found"))
-                .getAuthority();
 
-        return Role.valueOf(authority.replace("ROLE_", ""));
+        return authentication.getAuthorities()
+                .stream()
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority != null
+                        && authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .map(roleName -> {
+                    try {
+                        return Role.valueOf(roleName);
+                    } catch (IllegalArgumentException ex) {
+                        throw new ForbiddenException("Invalid user role");
+                    }
+                })
+                .findFirst()
+                .orElseThrow(() -> new ForbiddenException("User role not found"));
     }
 }

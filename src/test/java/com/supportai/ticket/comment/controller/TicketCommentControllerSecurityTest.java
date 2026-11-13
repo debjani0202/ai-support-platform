@@ -1,3 +1,4 @@
+
 package com.supportai.ticket.comment.controller;
 
 import com.supportai.exception.GlobalExceptionHandler;
@@ -193,6 +194,59 @@ class TicketCommentControllerSecurityTest {
                                 }
                                 """))
                 .andExpect(status().isCreated());
+    }
+
+    // Regression test: FACTOR_BEARER must not be mistaken for the application role.
+    @Test
+    void authenticatedAdminCanAddCommentWithFactorBearerAuthority() throws Exception {
+        CommentResponse response = new CommentResponse(
+                2L, 1L, 99L, "Admin", "Admin comment", LocalDateTime.now()
+        );
+
+        when(commentService.addComment(
+                eq(1L),
+                any(CreateCommentRequest.class),
+                eq(99L),
+                eq(Role.ADMIN)
+        )).thenReturn(response);
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("99")
+                                .claim("role", "ADMIN"))
+                                .authorities(
+                                        new SimpleGrantedAuthority("FACTOR_BEARER"),
+                                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                                ))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "content": "Admin comment"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+    }
+
+    // Regression test: FACTOR_BEARER must not be mistaken for the application role.
+    @Test
+    void authenticatedAdminCanGetCommentsWithFactorBearerAuthority() throws Exception {
+        PageResponse<CommentResponse> emptyPage = new PageResponse<>(
+                List.of(), 0, 20, 0, 0, true, true
+        );
+
+        when(commentService.getComments(
+                eq(1L), eq(99L), eq(Role.ADMIN), eq(0), eq(20)
+        )).thenReturn(emptyPage);
+
+        mockMvc.perform(get("/api/tickets/1/comments")
+                        .with(jwt().jwt(jwt -> jwt
+                                .subject("99")
+                                .claim("role", "ADMIN"))
+                                .authorities(
+                                        new SimpleGrantedAuthority("FACTOR_BEARER"),
+                                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                                )))
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -1,3 +1,4 @@
+
 package com.supportai.ticket.controller;
 
 import com.supportai.exception.ForbiddenException;
@@ -194,21 +195,30 @@ public class TicketController {
         );
     }
 
+    // Extract the application role, ignoring non-application authorities.
     private Role getCurrentUserRole(
             Authentication authentication
     ) {
-        String authority = authentication.getAuthorities()
+        return authentication.getAuthorities()
                 .stream()
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority != null
+                        && authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .map(roleName -> {
+                    try {
+                        return Role.valueOf(roleName);
+                    } catch (IllegalArgumentException ex) {
+                        throw new ForbiddenException(
+                                "Invalid user role"
+                        );
+                    }
+                })
                 .findFirst()
                 .orElseThrow(() ->
                         new ForbiddenException(
                                 "User role not found"
                         )
-                )
-                .getAuthority();
-
-        return Role.valueOf(
-                authority.replace("ROLE_", "")
-        );
+                );
     }
 }
