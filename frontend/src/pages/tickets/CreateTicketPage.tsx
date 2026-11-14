@@ -4,13 +4,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { createTicketSchema, type CreateTicketFormValues } from '@/lib/validation/ticket.schema';
 import { createTicketApi } from '@/lib/api/tickets';
-import { classifyTicketApi } from '@/lib/api/ai';
-import type { TicketCategory } from '@/types/ticket.types';
+import { classifyTicketApi, suggestPriorityApi } from '@/lib/api/ai';
+import type { TicketCategory, TicketPriority } from '@/types/ticket.types';
 import { AppNavbar } from '@/components/layout/AppNavbar';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { CategoryBadge } from '@/components/badges/CategoryBadge';
+import { PriorityBadge } from '@/components/badges/PriorityBadge';
 import { Sparkles, AlertCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,15 +19,25 @@ export function CreateTicketPage() {
   const navigate = useNavigate();
   const [generalError, setGeneralError] = useState<string | null>(null);
 
-  // Classification preview state
+  // Category classification preview state
   const [isSuggesting, setIsSuggesting] = useState<boolean>(false);
   const [suggestedCategory, setSuggestedCategory] = useState<TicketCategory | null>(null);
   const [suggestionNotice, setSuggestionNotice] = useState<string | null>(null);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
 
-  // In-flight request guards and sequence tracking
+  // Priority suggestion state
+  const [isSuggestingPriority, setIsSuggestingPriority] = useState<boolean>(false);
+  const [suggestedPriority, setSuggestedPriority] = useState<TicketPriority | null>(null);
+  const [priorityNotice, setPriorityNotice] = useState<string | null>(null);
+  const [priorityError, setPriorityError] = useState<string | null>(null);
+
+  // In-flight request guards and sequence tracking for category
   const isSuggestingRef = useRef<boolean>(false);
   const requestSeqRef = useRef<number>(0);
+
+  // In-flight request guards and sequence tracking for priority
+  const isSuggestingPriorityRef = useRef<boolean>(false);
+  const priorityRequestSeqRef = useRef<number>(0);
 
   const {
     register,
@@ -50,15 +61,30 @@ export function CreateTicketPage() {
   const watchTitle = watch('title');
   const watchDescription = watch('description');
 
+  const isPriorityInputValid = Boolean(
+    watchTitle?.trim() &&
+    watchDescription?.trim() &&
+    watchTitle.trim().length <= 255
+  );
+
   // Whenever title or description changes:
-  // Invalidate any active in-flight request, reset loading state, and clear previous suggestions, notices, and errors
+  // Invalidate any active in-flight requests, reset loading states, and clear previous suggestions, notices, and errors
   useEffect(() => {
+    // Invalidate category
     requestSeqRef.current += 1;
     isSuggestingRef.current = false;
     setIsSuggesting(false);
     setSuggestedCategory(null);
     setSuggestionNotice(null);
     setSuggestionError(null);
+
+    // Invalidate priority
+    priorityRequestSeqRef.current += 1;
+    isSuggestingPriorityRef.current = false;
+    setIsSuggestingPriority(false);
+    setSuggestedPriority(null);
+    setPriorityNotice(null);
+    setPriorityError(null);
   }, [watchTitle, watchDescription]);
 
   // Clean up in-flight requests on component unmount
@@ -66,10 +92,13 @@ export function CreateTicketPage() {
     return () => {
       requestSeqRef.current += 1;
       isSuggestingRef.current = false;
+
+      priorityRequestSeqRef.current += 1;
+      isSuggestingPriorityRef.current = false;
     };
   }, []);
 
-  // Request classification with synchronous ref guard and request version verification
+  // Request category classification with synchronous ref guard and request version verification
   const handleSuggestCategory = async () => {
     if (isSuggestingRef.current || isSuggesting) {
       return;
@@ -128,6 +157,70 @@ export function CreateTicketPage() {
     if (suggestedCategory) {
       setValue('category', suggestedCategory, { shouldValidate: true, shouldDirty: true });
       toast.info(`Applied suggested category: ${suggestedCategory.replace('_', ' ')}`);
+    }
+  };
+
+  // Request priority suggestion with synchronous ref guard and request sequence verification
+  const handleSuggestPriority = async () => {
+    if (isSuggestingPriorityRef.current || isSuggestingPriority) {
+      return;
+    }
+
+    const title = getValues('title')?.trim();
+    const description = getValues('description')?.trim();
+
+    setPriorityError(null);
+    setPriorityNotice(null);
+
+    if (!title || !description) {
+      setPriorityError('Please provide both a title and description before requesting a priority suggestion.');
+      return;
+    }
+
+    if (title.length > 255) {
+      setPriorityError('Title must not exceed 255 characters.');
+      return;
+    }
+
+    isSuggestingPriorityRef.current = true;
+    setIsSuggestingPriority(true);
+    const currentRequestId = ++priorityRequestSeqRef.current;
+
+    try {
+      const data = await suggestPriorityApi({ title, description });
+
+      if (currentRequestId !== priorityRequestSeqRef.current) {
+        return;
+      }
+
+      if (data.priority) {
+        setSuggestedPriority(data.priority);
+        setPriorityNotice(null);
+      } else {
+        setSuggestedPriority(null);
+        setPriorityNotice("We couldn't determine a reliable priority. Please choose one manually.");
+      }
+    } catch (err: unknown) {
+      if (currentRequestId !== priorityRequestSeqRef.current) {
+        return;
+      }
+
+      const apiErr = err as { message?: string };
+      setSuggestedPriority(null);
+      setPriorityError(apiErr.message || 'Unable to fetch priority suggestion. Please choose a priority manually.');
+    } finally {
+      if (currentRequestId === priorityRequestSeqRef.current) {
+        isSuggestingPriorityRef.current = false;
+        setIsSuggestingPriority(false);
+      }
+    }
+  };
+
+  const handleApplyPrioritySuggestion = () => {
+    if (suggestedPriority) {
+      setValue('priority', suggestedPriority, { shouldValidate: true, shouldDirty: true });
+      const formattedPriority = suggestedPriority.charAt(0) + suggestedPriority.slice(1).toLowerCase();
+      toast.info(`Priority updated to ${formattedPriority}`);
     }
   };
 
@@ -217,9 +310,23 @@ export function CreateTicketPage() {
 
               {/* Priority Select */}
               <div className="space-y-1.5 text-left">
-                <label htmlFor="priority" className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Priority Level
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="priority" className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Priority Level
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSuggestPriority}
+                    isLoading={isSuggestingPriority}
+                    disabled={isSuggestingPriority || !isPriorityInputValid}
+                    className="text-xs h-7 px-2.5 gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                  >
+                    {!isSuggestingPriority && <Sparkles className="w-3.5 h-3.5 text-indigo-600" />}
+                    {isSuggestingPriority ? 'Analysing ticket...' : 'Suggest priority'}
+                  </Button>
+                </div>
                 <select
                   id="priority"
                   {...register('priority')}
@@ -232,6 +339,46 @@ export function CreateTicketPage() {
                 </select>
                 {errors.priority && (
                   <p className="text-xs text-rose-600 font-medium">{errors.priority.message}</p>
+                )}
+
+                {/* Inline priority suggestion error banner */}
+                {priorityError && (
+                  <div className="rounded-lg bg-rose-50 border border-rose-200 p-2.5 flex items-start gap-2 text-rose-700 text-xs mt-1.5">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{priorityError}</span>
+                  </div>
+                )}
+
+                {/* Inline priority suggestion notice banner (when priority is null) */}
+                {priorityNotice && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 flex items-start gap-2 text-amber-800 text-xs mt-1.5">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{priorityNotice}</span>
+                  </div>
+                )}
+
+                {/* AI Priority Suggestion preview callout */}
+                {suggestedPriority && (
+                  <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-between gap-3 mt-2">
+                    <div className="flex items-center gap-2.5 text-xs text-indigo-950">
+                      <span className="font-semibold text-[10px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200">
+                        AI SUGGESTION
+                      </span>
+                      <span>
+                        Suggested priority:{' '}
+                        <PriorityBadge priority={suggestedPriority} />
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="primary"
+                      onClick={handleApplyPrioritySuggestion}
+                      className="text-xs h-7 px-2.5"
+                    >
+                      Apply suggestion
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -250,8 +397,8 @@ export function CreateTicketPage() {
                     disabled={isSuggesting}
                     className="text-xs h-7 px-2.5 gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                    Suggest Category
+                    {!isSuggesting && <Sparkles className="w-3.5 h-3.5 text-indigo-600" />}
+                    {isSuggesting ? 'Analysing ticket...' : 'Suggest Category'}
                   </Button>
                 </div>
 

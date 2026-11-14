@@ -1,4 +1,3 @@
-
 package com.supportai.ai;
 
 import tools.jackson.databind.JsonNode;
@@ -17,7 +16,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Locale;
-import java.util.concurrent.Semaphore;
 
 @Component
 public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier {
@@ -27,7 +25,7 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
     private final String baseUrl;
     private final String model;
     private final Duration requestTimeout;
-    private final Semaphore concurrencyLimiter;
+    private final OllamaConcurrencyLimiter concurrencyLimiter;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
@@ -38,7 +36,7 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
             @Value("${app.ai.ollama.model}") String model,
             @Value("${app.ai.ollama.connect-timeout-ms}") long connectTimeoutMs,
             @Value("${app.ai.ollama.request-timeout-ms}") long requestTimeoutMs,
-            @Value("${app.ai.ollama.max-concurrent-requests:2}") int maxConcurrentRequests,
+            OllamaConcurrencyLimiter concurrencyLimiter,
             ObjectMapper objectMapper) {
 
         if (connectTimeoutMs <= 0) {
@@ -49,15 +47,14 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
             throw new IllegalArgumentException(
                     "Ollama request timeout must be positive, got: " + requestTimeoutMs);
         }
-        if (maxConcurrentRequests <= 0) {
-            throw new IllegalArgumentException(
-                    "Ollama max concurrent requests must be positive, got: " + maxConcurrentRequests);
+        if (concurrencyLimiter == null) {
+            throw new IllegalArgumentException("Concurrency limiter must not be null");
         }
 
         this.baseUrl = baseUrl;
         this.model = model;
         this.requestTimeout = Duration.ofMillis(requestTimeoutMs);
-        this.concurrencyLimiter = new Semaphore(maxConcurrentRequests);
+        this.concurrencyLimiter = concurrencyLimiter;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
@@ -75,7 +72,7 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
                 baseUrl,
                 model,
                 Duration.ofMillis(10000),
-                new Semaphore(2),
+                new OllamaConcurrencyLimiter(2),
                 objectMapper,
                 httpClient
         );
@@ -86,7 +83,7 @@ public class OllamaTicketCategoryClassifier implements TicketCategoryClassifier 
             String baseUrl,
             String model,
             Duration requestTimeout,
-            Semaphore concurrencyLimiter,
+            OllamaConcurrencyLimiter concurrencyLimiter,
             ObjectMapper objectMapper,
             HttpClient httpClient) {
 

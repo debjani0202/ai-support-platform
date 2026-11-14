@@ -1,6 +1,7 @@
 package com.supportai.ai;
 
 import com.supportai.ticket.entity.TicketCategory;
+import com.supportai.ticket.entity.TicketPriority;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.JsonNode;
@@ -23,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class OllamaTicketCategoryClassifierTest {
@@ -232,30 +235,36 @@ class OllamaTicketCategoryClassifierTest {
 
     @Test
     void invalidConfigurationValuesThrowIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
-                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 0, 10000, 2, objectMapper));
-        assertThrows(IllegalArgumentException.class, () ->
-                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", -1, 10000, 2, objectMapper));
+        OllamaConcurrencyLimiter limiter = new OllamaConcurrencyLimiter(2);
 
         assertThrows(IllegalArgumentException.class, () ->
-                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 0, 2, objectMapper));
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 0, 10000, limiter, objectMapper));
         assertThrows(IllegalArgumentException.class, () ->
-                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, -1, 2, objectMapper));
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", -1, 10000, limiter, objectMapper));
 
         assertThrows(IllegalArgumentException.class, () ->
-                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 10000, 0, objectMapper));
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 0, limiter, objectMapper));
         assertThrows(IllegalArgumentException.class, () ->
-                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 10000, -1, objectMapper));
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, -1, limiter, objectMapper));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", 3000, 10000, null, objectMapper));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", Duration.ZERO, limiter, objectMapper, mock(HttpClient.class)));
+        assertThrows(IllegalArgumentException.class, () ->
+                new OllamaTicketCategoryClassifier("http://localhost:11434", "qwen3:4b", Duration.ofSeconds(5), null, objectMapper, mock(HttpClient.class)));
     }
 
     @Test
     void configuredTimeoutAndConcurrencyApplied() {
+        OllamaConcurrencyLimiter limiter = new OllamaConcurrencyLimiter(3);
         OllamaTicketCategoryClassifier classifier = new OllamaTicketCategoryClassifier(
                 "http://localhost:11434",
                 "qwen3:4b",
                 2500,
                 8000,
-                3,
+                limiter,
                 objectMapper
         );
 
@@ -335,7 +344,7 @@ class OllamaTicketCategoryClassifierTest {
                 "http://localhost:11434",
                 "qwen3:4b",
                 Duration.ofMillis(5000),
-                new Semaphore(1),
+                new OllamaConcurrencyLimiter(1),
                 objectMapper,
                 httpClient
         );
@@ -389,7 +398,7 @@ class OllamaTicketCategoryClassifierTest {
                 "http://localhost:11434",
                 "qwen3:4b",
                 Duration.ofMillis(7500),
-                new Semaphore(2),
+                new OllamaConcurrencyLimiter(2),
                 objectMapper,
                 httpClient
         );
@@ -399,5 +408,76 @@ class OllamaTicketCategoryClassifierTest {
         assertNotNull(capturedRequest.get());
         assertTrue(capturedRequest.get().timeout().isPresent());
         assertEquals(Duration.ofMillis(7500), capturedRequest.get().timeout().get());
+    }
+
+    @Test
+    void crossClassifierSharedConcurrencyBlocksCategoryWhenPriorityInFlight() throws Exception {
+        CountDownLatch priorityStarted = new CountDownLatch(1);
+        CountDownLatch releasePriority = new CountDownLatch(1);
+
+        HttpClient priorityHttpClient = mock(HttpClient.class);
+        HttpResponse<String> priorityResponse = mock(HttpResponse.class);
+        when(priorityResponse.statusCode()).thenReturn(200);
+        when(priorityResponse.body()).thenReturn(chatResponse("{\"priority\":\"HIGH\"}"));
+
+        when(priorityHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> {
+                    priorityStarted.countDown();
+                    releasePriority.await(5, TimeUnit.SECONDS);
+                    return priorityResponse;
+                });
+
+        HttpClient categoryHttpClient = mock(HttpClient.class);
+        HttpResponse<String> categoryResponse = mock(HttpResponse.class);
+        when(categoryResponse.statusCode()).thenReturn(200);
+        when(categoryResponse.body()).thenReturn(chatResponse("{\"category\":\"PAYMENT\"}"));
+        when(categoryHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(categoryResponse);
+
+        OllamaConcurrencyLimiter sharedLimiter = new OllamaConcurrencyLimiter(1);
+
+        OllamaTicketPriorityClassifier priorityClassifier = new OllamaTicketPriorityClassifier(
+                "http://localhost:11434",
+                "qwen3:4b",
+                Duration.ofMillis(5000),
+                sharedLimiter,
+                objectMapper,
+                priorityHttpClient
+        );
+
+        OllamaTicketCategoryClassifier categoryClassifier = new OllamaTicketCategoryClassifier(
+                "http://localhost:11434",
+                "qwen3:4b",
+                Duration.ofMillis(5000),
+                sharedLimiter,
+                objectMapper,
+                categoryHttpClient
+        );
+
+        Thread priorityThread = new Thread(() ->
+                priorityClassifier.classifyPriority("Urgent bug", "Platform crashed."));
+        priorityThread.start();
+
+        assertTrue(priorityStarted.await(5, TimeUnit.SECONDS));
+        assertEquals(0, sharedLimiter.availablePermits());
+
+        // Category classifier must fail fast because shared capacity is saturated
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> categoryClassifier.classify("Payment failed", "Card was declined.")
+        );
+        assertEquals("Ollama classification capacity reached", ex.getMessage());
+        verify(categoryHttpClient, never()).send(any(HttpRequest.class), any());
+
+        // Release priority request
+        releasePriority.countDown();
+        priorityThread.join(5000);
+
+        assertEquals(1, sharedLimiter.availablePermits());
+
+        // Now category request can succeed
+        TicketCategory result = categoryClassifier.classify("Payment failed", "Card was declined.");
+        assertEquals(TicketCategory.PAYMENT, result);
+        assertEquals(1, sharedLimiter.availablePermits());
     }
 }
