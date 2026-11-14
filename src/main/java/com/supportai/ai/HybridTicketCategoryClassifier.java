@@ -36,8 +36,11 @@ public class HybridTicketCategoryClassifier implements TicketCategoryClassifier 
             return ollamaClassifier.classify(title, description);
         } catch (RuntimeException exception) {
             logger.warn(
-                    "AI ticket classification failed; leaving category unclassified. Error type: {}",
-                    exception.getClass().getSimpleName()
+                    "AI ticket classification failed; leaving category unclassified. Reason: {} (cause: {})",
+                    exception.getMessage(),
+                    exception.getCause() != null
+                            ? exception.getCause().getClass().getSimpleName()
+                            : "none"
             );
             return null;
         }

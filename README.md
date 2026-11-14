@@ -16,6 +16,9 @@ The project focuses on secure authentication, ticket management, database persis
 - `src/main/java/com/supportai/ai/OllamaTicketCategoryClassifier.java`
 - `src/main/java/com/supportai/ai/RuleBasedTicketCategoryClassifier.java`
 - `src/main/java/com/supportai/ai/TicketCategoryClassifier.java`
+- `src/main/java/com/supportai/ai/controller/AiController.java`
+- `src/main/java/com/supportai/ai/dto/ClassifyTicketRequest.java`
+- `src/main/java/com/supportai/ai/dto/ClassifyTicketResponse.java`
 - `src/main/java/com/supportai/audit/controller/TicketAuditLogController.java`
 - `src/main/java/com/supportai/audit/dto/TicketAuditLogResponse.java`
 - `src/main/java/com/supportai/audit/entity/TicketAuditLog.java`
@@ -153,6 +156,7 @@ The project focuses on secure authentication, ticket management, database persis
 - `PATCH` `/api/tickets/{id}/assign` | `TicketController`
 - `PATCH` `/api/users/{id}/role` | `UserController`
 - `POST` `/api/agent-requests` | `AgentRequestController`
+- `POST` `/api/ai/classify` | `AiController`
 - `POST` `/api/auth/change-password` | `AuthController`
 - `POST` `/api/auth/forgot-password` | `AuthController`
 - `POST` `/api/auth/login` | `AuthController`
@@ -168,7 +172,7 @@ The project focuses on secure authentication, ticket management, database persis
 
 ### Test Results
 
-**Available test report totals:** 451 tests, 0 failures, 0 errors, 1 skipped. These counts do not establish whether the latest test run passed.
+**Available test report totals:** 466 tests, 0 failures, 0 errors, 1 skipped. These counts do not establish whether the latest test run passed.
 <!-- AUTO:END -->
 
 ## Project Overview
